@@ -10,5 +10,11 @@ This will populate a complete table with valid json data:
 
 `PageConstructor` has optional props:
 ```TSX
-<PageConstructor data={data} editable labelOverride={["Foo", "Bar"]} onEdit={() => smth} onInsert={() => smth} />
+<PageConstructor 
+  data={data} 
+  editable 
+  labelOverride={["Foo", "Bar"]} 
+  onEdit={() => smth} 
+  onInsert={() => smth} 
+/>
 ```
