@@ -2,22 +2,30 @@ import AddCircleIcon from "@mui/icons-material/AddCircle";
 import EditIcon from "@mui/icons-material/Edit";
 import {
   IconButton,
+  Paper,
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
 } from "@mui/material";
-import { FunctionComponent, useMemo } from "react";
-import { Column, Row, useTable } from "react-table";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  Row,
+  SortingState,
+  useReactTable,
+} from "@tanstack/react-table";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useVirtual, VirtualItem } from "react-virtual";
 import { toTitleCase } from "../strings";
+import { PageConstructorProps } from "./Page";
 
-type Props = {
-  data: readonly object[];
-  editable?: boolean;
-  cellOverride?: ((row: Row) => JSX.Element)[];
-  labelOverride?: Array<string | undefined>;
-  onEdit?: (row: Row) => void;
+type TableProps<TData> = PageConstructorProps<TData> & {
+  onEdit?: (row: TData) => void;
   onNew?: () => void;
 };
 
@@ -38,7 +46,9 @@ type Props = {
  * use the default header. If not provided, the default header will be the
  * capitalized version of the key.
  */
-export const TableConstructor: FunctionComponent<Props> = (props) => {
+export const TableConstructor = <TData extends Record<string, any>>(
+  props: TableProps<TData>
+) => {
   const {
     cellOverride,
     editable = false,
@@ -47,11 +57,14 @@ export const TableConstructor: FunctionComponent<Props> = (props) => {
     onEdit,
     onNew,
   } = props;
+  const largeList = data.length > 100;
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   /** If the parent has an edit function, use it */
-  const handleEditClick = (row: Row) => {
+  const handleEditClick = (row: Row<TData>) => {
     if (onEdit) {
-      onEdit(row);
+      onEdit(row.original);
     }
   };
 
@@ -62,101 +75,154 @@ export const TableConstructor: FunctionComponent<Props> = (props) => {
     }
   };
 
-  /** Memoized columns. Builds them using the object's keyname. */
-  const columns = useMemo(() => {
-    if (Object.keys(data).length === 0) {
-      return [];
-    }
-
-    let columns: Column<object>[] = [];
-    const columnGroup = Object.keys(data[0]).map((item, index) => ({
-      Header:
-        (labelOverride &&
-          labelOverride?.length > index &&
-          labelOverride[index]) ||
-        toTitleCase(item),
-      accessor: item,
-      Cell: (cell: { row: Row }) =>
-        cellOverride && cellOverride[index]
-          ? cellOverride[index]
-          : cell.row.values[item].toString(),
-    }));
-    columns = [...columnGroup];
-
+  const columns = useMemo<ColumnDef<TData>[]>(() => {
+    const initialColumns: ColumnDef<TData>[] = Object.keys(data[0]).map(
+      (key, index) => ({
+        accessorKey: key,
+        cell: ({ row }) => {
+          if (cellOverride && cellOverride[index]) {
+            return cellOverride[index](row);
+          }
+          return row.original[key].toString();
+        },
+        header: (labelOverride && labelOverride[key]) || toTitleCase(key),
+        size: 0,
+      })
+    );
     if (editable) {
-      const editColumn: Column = {
-        Header: (
-          <IconButton onClick={handleNewClick}>
-            <AddCircleIcon />
-          </IconButton>
-        ),
-        id: "actions",
-        Cell: ({ row }) => (
+      initialColumns.push({
+        cell: ({ row }) => (
           <IconButton onClick={() => handleEditClick(row)}>
             <EditIcon />
           </IconButton>
         ),
-      };
-      columns = [...columns, editColumn];
+        id: "actions",
+        header: () => (
+          <IconButton onClick={handleNewClick}>
+            <AddCircleIcon />
+          </IconButton>
+        ),
+        size: 0,
+      });
     }
+    return initialColumns;
+  }, [data, labelOverride, editable]);
 
-    return columns;
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  const { rows } = table.getRowModel();
+
+  const rowVirtualizer = useVirtual({
+    parentRef: tableContainerRef,
+    size: rows.length,
+    overscan: 10,
+  });
+  const { virtualItems: virtualRows, totalSize } = rowVirtualizer;
+
+  let paddingTop = 0;
+  let paddingBottom = 0;
+  let displayRows: Row<TData>[] | VirtualItem[] = rows;
+
+  // If the list is large, we need to use the virtualizer
+  if (largeList) {
+    displayRows = virtualRows;
+    paddingTop = virtualRows.length > 0 ? virtualRows?.[0]?.start || 0 : 0;
+    paddingBottom =
+      virtualRows.length > 0
+        ? totalSize - (virtualRows?.[virtualRows.length - 1]?.end || 0)
+        : 0;
+  }
+
+  useEffect(() => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollTop = 0;
+    }
   }, [data]);
 
-  const scrollbarWidth = useMemo(() => getScrollbarWidth(), [data]);
-
-  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
-    useTable({
-      columns,
-      data,
-    });
-
   return (
-    <Table {...getTableProps()} stickyHeader>
-      <TableHead>
-        {headerGroups.map((headerGroup) => (
-          <TableRow {...headerGroup.getHeaderGroupProps()}>
-            {headerGroup.headers.map((column) => (
-              <TableCell {...column.getHeaderProps()}>
-                {column.render("Header")}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableHead>
-      <TableBody {...getTableBodyProps()}>
-        {rows.map((row, i) => {
-          prepareRow(row);
-          return (
-            <TableRow {...row.getRowProps()}>
-              {row.cells.map((cell) => {
+    <TableContainer
+      className="h-full"
+      component={Paper}
+      ref={tableContainerRef}
+    >
+      <Table stickyHeader>
+        <TableHead>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
                 return (
-                  <TableCell {...cell.getCellProps()}>
-                    {cell.render("Cell")}
+                  <TableCell
+                    align="right"
+                    key={header.id}
+                    colSpan={header.colSpan}
+                    style={{ width: header.getSize() }}
+                  >
+                    {header.isPlaceholder ? null : (
+                      <div
+                        {...{
+                          className: header.column.getCanSort()
+                            ? "cursor-pointer select-none"
+                            : "",
+                          onClick: header.column.getToggleSortingHandler(),
+                        }}
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                        {{
+                          asc: " 🔼",
+                          desc: " 🔽",
+                        }[header.column.getIsSorted() as string] ?? null}
+                      </div>
+                    )}
                   </TableCell>
                 );
               })}
             </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+          ))}
+        </TableHead>
+        <TableBody>
+          {paddingTop > 0 && (
+            <TableRow>
+              <TableCell style={{ height: `${paddingTop}px` }} />
+            </TableRow>
+          )}
+          {displayRows.map((displayRow) => {
+            const row = !largeList
+              ? (displayRow as Row<TData>)
+              : (rows[displayRow.index] as Row<TData>);
+            return (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell) => {
+                  return (
+                    <TableCell align="right" key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            );
+          })}
+          {paddingBottom > 0 && (
+            <TableRow>
+              <TableCell style={{ height: `${paddingBottom}px` }} />
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
-};
-
-/**
- * Gets scrollbar width.
- * Thanks to https://davidwalsh.name/detect-scrollbar-width
- */
-const getScrollbarWidth = () => {
-  //
-  const scrollDiv = document.createElement("div");
-  scrollDiv.setAttribute(
-    "style",
-    "width: 100px; height: 100px; overflow: scroll; position:absolute; top:-9999px;"
-  );
-  document.body.appendChild(scrollDiv);
-  const scrollbarWidth = scrollDiv.offsetWidth - scrollDiv.clientWidth;
-  document.body.removeChild(scrollDiv);
-  return scrollbarWidth;
 };

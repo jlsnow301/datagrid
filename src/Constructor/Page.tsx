@@ -1,15 +1,15 @@
-import { Paper, TableContainer } from "@mui/material";
-import { FunctionComponent, useMemo, useState } from "react";
-import { Row } from "react-table";
+import { Row } from "@tanstack/react-table";
+import { useMemo, useState } from "react";
+import { FieldValues } from "react-hook-form";
 import { DialogConstructor } from "./Dialog";
 import { TableConstructor } from "./Table";
 
-export type PageConstructor = {
-  data: readonly object[];
+export type PageConstructorProps<TData> = {
+  data: TData[];
   editable?: boolean;
-  cellOverride?: ((row: Row) => JSX.Element)[];
-  labelOverride?: Array<string | undefined>;
-  onSave?: (data: object) => void;
+  cellOverride?: ((row: Row<TData>) => JSX.Element)[];
+  labelOverride?: Record<string, string>;
+  onSave?: (data: FieldValues) => void;
 };
 
 /**
@@ -21,41 +21,34 @@ export type PageConstructor = {
  * Data is any array of objects. The keys of the first object will be used as the
  * column headers.
  */
-export const PageConstructor: FunctionComponent<PageConstructor> = (props) => {
+export const PageConstructor = <TData extends Record<string, any>>(
+  props: PageConstructorProps<TData>
+) => {
   const { data, editable, cellOverride, labelOverride, onSave } = props;
-  const [content, setContent] = useState<object | undefined>();
+  const [content, setContent] = useState<TData | Record<string, any>>({});
   const [open, setOpen] = useState(false);
-
-  /** Cached schema of the first object in data[].  */
-  const createEmptyObject = useMemo(() => {
-    return Object.fromEntries(
-      Object.entries(data[0])?.map(([key, value]) => [
-        key,
-        getGenericValue(value),
-      ])
-    );
-  }, [data]);
+  const emptySchema = useMemo(() => createEmptySchema(data[0]), [data]);
 
   /** Closes the dialog and resets values.*/
   const onClose = () => {
-    setContent(undefined);
     setOpen(false);
+    setContent({});
   };
 
   /** Opens the dialog and sets values.*/
-  const onEdit = (row: Row) => {
-    setContent(row.original);
+  const onEdit = (row: TData) => {
+    setContent(row);
     setOpen(true);
   };
 
   /** Opens the dialog and sets values to empty. */
   const onNew = () => {
-    setContent(createEmptyObject);
+    setContent(emptySchema);
     setOpen(true);
   };
 
   /** If the parent has created a save action, uses it. */
-  const onSubmit = (data: object) => {
+  const onSubmit = (data: FieldValues) => {
     onClose();
     if (onSave) {
       onSave(data);
@@ -63,28 +56,30 @@ export const PageConstructor: FunctionComponent<PageConstructor> = (props) => {
   };
 
   return (
-    <div className="h-full p-2">
-      {editable && (
+    <div className="h-full w-full p-2">
+      {editable && open && (
         <DialogConstructor
           {...{ content, labelOverride, open, onClose, onSubmit }}
         />
       )}
-      <TableContainer
-        className="overflowy h-full overflow-y-scroll"
-        component={Paper}
-      >
-        <TableConstructor
-          {...{
-            data,
-            editable,
-            cellOverride,
-            labelOverride,
-            onEdit,
-            onNew,
-          }}
-        />
-      </TableContainer>
+      <TableConstructor
+        {...{
+          data,
+          editable,
+          cellOverride,
+          labelOverride,
+          onEdit,
+          onNew,
+        }}
+      />
     </div>
+  );
+};
+
+/** Cached schema of the first object in data[].  */
+const createEmptySchema = (data: object) => {
+  return Object.fromEntries(
+    Object.entries(data)?.map(([key, value]) => [key, getGenericValue(value)])
   );
 };
 

@@ -10,23 +10,17 @@ import {
   MenuItem,
   TextField,
 } from "@mui/material";
-import { FunctionComponent, useMemo } from "react";
-import {
-  Controller,
-  ControllerRenderProps,
-  FieldValues,
-  useForm,
-  UseFormStateReturn,
-} from "react-hook-form";
+import { useMemo } from "react";
+import { Control, FieldValues, useController, useForm } from "react-hook-form";
 import { z } from "zod";
 import { toTitleCase } from "../strings";
+import { PageConstructorProps } from "./Page";
 
-type Props = {
-  content?: object;
-  labelOverride?: Array<string | undefined>;
+type DialogProps<TData> = Pick<PageConstructorProps<TData>, "labelOverride"> & {
+  content: TData;
   open: boolean;
   onClose: () => void;
-  onSubmit: (content: object) => void;
+  onSubmit: (data: FieldValues) => void;
 };
 
 /**
@@ -41,11 +35,10 @@ type Props = {
  * form fields. If the array is shorter than the number of fields, the remaining
  * fields will be labeled with the key name.
  */
-export const DialogConstructor: FunctionComponent<Props> = (props) => {
+export const DialogConstructor = <TData extends Record<string, any>>(
+  props: DialogProps<TData>
+) => {
   const { content, labelOverride, open, onClose, onSubmit } = props;
-  if (!content) {
-    return <></>;
-  }
   const schema = useMemo(() => getZodSchema(content), [content]);
   const { control, handleSubmit } = useForm({ resolver: zodResolver(schema) });
 
@@ -54,25 +47,17 @@ export const DialogConstructor: FunctionComponent<Props> = (props) => {
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogTitle>Edit</DialogTitle>
         <DialogContent>
-          {Object.entries(content).map(([keyName, value], index) => {
-            const label = labelOverride?.[index] || toTitleCase(keyName);
+          {Object.entries(content).map(([name, value], index) => {
+            const label = labelOverride?.[index] || toTitleCase(name);
             return (
-              <Controller
-                control={control}
-                defaultValue={value}
+              <DialogInput
+                {...{
+                  control,
+                  label,
+                  name,
+                  initialValue: value,
+                }}
                 key={index}
-                name={keyName}
-                render={({ field, formState }) => (
-                  <DialogInput
-                    {...{
-                      errors: formState.errors,
-                      field,
-                      keyName,
-                      label,
-                      value,
-                    }}
-                  />
-                )}
               />
             );
           })}
@@ -90,30 +75,39 @@ export const DialogConstructor: FunctionComponent<Props> = (props) => {
 
 /** Returns a type of material ui input. */
 const DialogInput = (props: {
-  errors: UseFormStateReturn<FieldValues>["errors"];
-  field: ControllerRenderProps<FieldValues, string>;
-  keyName: string;
+  control: Control<FieldValues, any>;
   label: string;
-  value: any;
+  name: string;
+  initialValue: any;
 }) => {
-  const { field, errors, keyName, label, value } = props;
-  const inputType = getInputType(value);
+  const { control, name, label, initialValue } = props;
+  const {
+    field,
+    formState: { errors },
+  } = useController({ name, control, defaultValue: initialValue });
+
+  const inputType = getInputType(initialValue);
 
   if (inputType === "checkbox") {
-    return <FormControlLabel control={<Checkbox {...field} />} label={label} />;
+    return (
+      <FormControlLabel
+        control={<Checkbox {...field} defaultChecked={initialValue} />}
+        label={label}
+      />
+    );
   } else if (inputType === "array") {
     return (
       <TextField
         {...field}
-        error={!!errors[keyName]}
+        error={!!errors[name]}
         fullWidth
-        helperText={errors[keyName]?.message as string}
-        id={keyName}
+        helperText={errors[name]?.message as string}
+        id={name}
         label={label}
         select
         sx={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}
       >
-        {value.map((option: string) => (
+        {initialValue.map((option: string) => (
           <MenuItem key={option} value={option}>
             {toTitleCase(option)}
           </MenuItem>
@@ -124,10 +118,10 @@ const DialogInput = (props: {
     return (
       <TextField
         {...field}
-        error={!!errors[keyName]}
+        error={!!errors[name]}
         fullWidth
-        helperText={errors[keyName]?.message as string}
-        id={keyName}
+        helperText={errors[name]?.message as string}
+        id={name}
         label={label}
         sx={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}
         variant="outlined"
@@ -148,10 +142,11 @@ const getInputType = (value: any) => {
 };
 
 /** Creates a Zod schema from an object. */
-const getZodSchema = (data: object) => {
+const getZodSchema = (content: Record<string, any>) => {
+  if (Object.entries(content)?.length === 0) return z.object({});
   const schema = z.object(
     Object.fromEntries(
-      Object.entries(data).map(([key, value]) => {
+      Object.entries(content).map(([key, value]) => {
         if (typeof value === "number") {
           return [key, z.number()];
         } else if (typeof value === "string") {
