@@ -123,6 +123,9 @@ const DialogInput = (props: {
         helperText={errors[name]?.message as string}
         id={name}
         label={label}
+        onChange={(e) =>
+          inputType === "number" && field.onChange(+e.target.value || 0)
+        }
         sx={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}
         variant="outlined"
       />
@@ -136,6 +139,8 @@ const getInputType = (value: any) => {
     return "array";
   } else if (typeof value === "boolean") {
     return "checkbox";
+  } else if (typeof value === "number") {
+    return "number";
   } else {
     return "text";
   }
@@ -150,7 +155,7 @@ const getZodSchema = (content: Record<string, any>) => {
         if (typeof value === "number") {
           return [key, z.number()];
         } else if (typeof value === "string") {
-          return [key, z.string()];
+          return [key, z.string().min(1)];
         } else if (typeof value === "boolean") {
           return [key, z.boolean()];
         } else {
