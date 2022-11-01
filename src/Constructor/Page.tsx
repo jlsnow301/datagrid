@@ -1,8 +1,8 @@
-import { TableContainer, Paper } from "@mui/material";
+import { Paper, TableContainer } from "@mui/material";
 import { FunctionComponent, useMemo, useState } from "react";
 import { Row } from "react-table";
-import { DialogConstructor } from "./DialogConstructor";
-import { TableConstructor } from "./TableConstructor";
+import { DialogConstructor } from "./Dialog";
+import { TableConstructor } from "./Table";
 
 export type PageConstructor = {
   data: readonly object[];
@@ -12,33 +12,49 @@ export type PageConstructor = {
   onSave?: (data: object) => void;
 };
 
+/**
+ * ## PageConstructor
+ * A page component that takes an array of objects and creates a table from it.
+ * If marked as editable, it will also create a dialog for editing the data.
+ * If a save function is provided, it will be called when the dialog is submitted.
+ *
+ * Data is any array of objects. The keys of the first object will be used as the
+ * column headers.
+ */
 export const PageConstructor: FunctionComponent<PageConstructor> = (props) => {
   const { data, editable, cellOverride, labelOverride, onSave } = props;
   const [content, setContent] = useState<object | undefined>();
   const [open, setOpen] = useState(false);
 
-  // Create an empty object with the same keys as the first object in the data array.
+  /** Cached schema of the first object in data[].  */
   const createEmptyObject = useMemo(() => {
     return Object.fromEntries(
-      Object.entries(data[0])?.map(([key, value]) => [key, getValueType(value)])
+      Object.entries(data[0])?.map(([key, value]) => [
+        key,
+        getGenericValue(value),
+      ])
     );
   }, [data]);
 
+  /** Closes the dialog and resets values.*/
   const onClose = () => {
     setContent(undefined);
     setOpen(false);
   };
 
+  /** Opens the dialog and sets values.*/
   const onEdit = (row: Row) => {
     setContent(row.original);
     setOpen(true);
   };
 
+  /** Opens the dialog and sets values to empty. */
   const onNew = () => {
     setContent(createEmptyObject);
     setOpen(true);
   };
 
+  /** If the parent has created a save action, uses it. */
   const onSubmit = (data: object) => {
     onClose();
     if (onSave) {
@@ -72,10 +88,13 @@ export const PageConstructor: FunctionComponent<PageConstructor> = (props) => {
   );
 };
 
-const getValueType = (value: any) => {
+/** Returns a generic primitive based on input.  */
+const getGenericValue = (value: any) => {
   if (value instanceof Array) {
     return [];
   } else if (typeof value === "boolean") {
     return false;
+  } else if (typeof value === "number") {
+    return 0;
   } else return "";
 };

@@ -2,17 +2,15 @@ import AddCircleIcon from "@mui/icons-material/AddCircle";
 import EditIcon from "@mui/icons-material/Edit";
 import {
   IconButton,
-  Paper,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
 } from "@mui/material";
-import { FunctionComponent, memo, useMemo } from "react";
+import { FunctionComponent, useMemo } from "react";
 import { Column, Row, useTable } from "react-table";
-import { toTitleCase } from "./strings";
+import { toTitleCase } from "../strings";
 
 type Props = {
   data: readonly object[];
@@ -40,7 +38,7 @@ type Props = {
  * use the default header. If not provided, the default header will be the
  * capitalized version of the key.
  */
-export const TableConstructor: FunctionComponent<Props> = memo((props) => {
+export const TableConstructor: FunctionComponent<Props> = (props) => {
   const {
     cellOverride,
     editable = false,
@@ -50,12 +48,14 @@ export const TableConstructor: FunctionComponent<Props> = memo((props) => {
     onNew,
   } = props;
 
+  /** If the parent has an edit function, use it */
   const handleEditClick = (row: Row) => {
     if (onEdit) {
       onEdit(row);
     }
   };
 
+  /** If a parent def for saving a new item exists, use it */
   const handleNewClick = () => {
     if (onNew) {
       onNew();
@@ -142,7 +142,7 @@ export const TableConstructor: FunctionComponent<Props> = memo((props) => {
       </TableBody>
     </Table>
   );
-});
+};
 
 /**
  * Gets scrollbar width.

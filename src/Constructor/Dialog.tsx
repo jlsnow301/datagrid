@@ -10,7 +10,7 @@ import {
   MenuItem,
   TextField,
 } from "@mui/material";
-import { FunctionComponent, memo, useMemo } from "react";
+import { FunctionComponent, useMemo } from "react";
 import {
   Controller,
   ControllerRenderProps,
@@ -19,7 +19,7 @@ import {
   UseFormStateReturn,
 } from "react-hook-form";
 import { z } from "zod";
-import { toTitleCase } from "./strings";
+import { toTitleCase } from "../strings";
 
 type Props = {
   content?: object;
@@ -29,13 +29,26 @@ type Props = {
   onSubmit: (content: object) => void;
 };
 
-export const DialogConstructor: FunctionComponent<Props> = memo((props) => {
+/**
+ * ## DialogConstructor
+ * A dialog component that takes an object and creates a form from it.
+ * If a save function is provided, it will be called when the dialog is submitted.
+ *
+ * Content is any object. The keys of the object will be used as the
+ * form fields.
+ *
+ * LabelOverride is an array of strings that will be used as the labels for the
+ * form fields. If the array is shorter than the number of fields, the remaining
+ * fields will be labeled with the key name.
+ */
+export const DialogConstructor: FunctionComponent<Props> = (props) => {
   const { content, labelOverride, open, onClose, onSubmit } = props;
   if (!content) {
     return <></>;
   }
   const schema = useMemo(() => getZodSchema(content), [content]);
   const { control, handleSubmit } = useForm({ resolver: zodResolver(schema) });
+
   return (
     <Dialog open={open} onClose={onClose}>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -73,8 +86,9 @@ export const DialogConstructor: FunctionComponent<Props> = memo((props) => {
       </form>
     </Dialog>
   );
-});
+};
 
+/** Returns a type of material ui input. */
 const DialogInput = (props: {
   errors: UseFormStateReturn<FieldValues>["errors"];
   field: ControllerRenderProps<FieldValues, string>;
@@ -121,6 +135,8 @@ const DialogInput = (props: {
     );
   }
 };
+
+/** Checks which input type to use based on value. */
 const getInputType = (value: any) => {
   if (value instanceof Array) {
     return "array";

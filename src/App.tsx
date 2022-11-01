@@ -1,4 +1,4 @@
-import { PageConstructor } from "./PageConstructor";
+import { PageConstructor } from "./Constructor";
 import data from "./data.json";
 
 export const App = () => {
