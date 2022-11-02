@@ -22,15 +22,10 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtual, VirtualItem } from "react-virtual";
 import { toTitleCase } from "../strings";
-import { PageConstructorProps } from "./Page";
-
-type TableProps<TData> = PageConstructorProps<TData> & {
-  onEdit?: (row: TData) => void;
-  onNew?: () => void;
-};
+import { AnyObject, DynamicTableProps } from "./types";
 
 /**
- * ## TableConstructor
+ * ## DynamicTable
  * A table component that takes an array of objects and creates a table from it.
  *
  * Data is any array of objects. The keys of the first object will be used as the
@@ -46,9 +41,7 @@ type TableProps<TData> = PageConstructorProps<TData> & {
  * use the default header. If not provided, the default header will be the
  * capitalized version of the key.
  */
-export const TableConstructor = <TData extends Record<string, any>>(
-  props: TableProps<TData>
-) => {
+export function DynamicTable<TData>(props: DynamicTableProps<TData>) {
   const {
     cellOverride,
     editable = false,
@@ -62,37 +55,37 @@ export const TableConstructor = <TData extends Record<string, any>>(
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   /** If the parent has an edit function, use it */
-  const handleEditClick = (row: Row<TData>) => {
+  function handleEditClick(row: AnyObject<TData>) {
     if (onEdit) {
-      onEdit(row.original);
+      onEdit(row);
     }
-  };
+  }
 
   /** If a parent def for saving a new item exists, use it */
-  const handleNewClick = () => {
+  function handleNewClick() {
     if (onNew) {
       onNew();
     }
-  };
+  }
 
-  const columns = useMemo<ColumnDef<TData>[]>(() => {
-    const initialColumns: ColumnDef<TData>[] = Object.keys(data[0]).map(
-      (key, index) => ({
-        accessorKey: key,
-        cell: ({ row }) => {
-          if (cellOverride && cellOverride[index]) {
-            return cellOverride[index](row);
-          }
-          return row.original[key].toString();
-        },
-        header: (labelOverride && labelOverride[key]) || toTitleCase(key),
-        size: 0,
-      })
-    );
+  const columns = useMemo<ColumnDef<AnyObject<TData>>[]>(() => {
+    const initialColumns: ColumnDef<AnyObject<TData>>[] = Object.keys(
+      data[0]
+    ).map((key, index) => ({
+      accessorKey: key,
+      cell: ({ row: { original } }) => {
+        if (cellOverride && cellOverride[index]) {
+          return cellOverride[index](original);
+        }
+        return String(original[key as keyof AnyObject<TData>]);
+      },
+      header: (labelOverride && labelOverride[key]) || toTitleCase(key),
+      size: 0,
+    }));
     if (editable) {
       initialColumns.push({
-        cell: ({ row }) => (
-          <IconButton onClick={() => handleEditClick(row)}>
+        cell: ({ row: { original } }) => (
+          <IconButton onClick={() => handleEditClick(original)}>
             <EditIcon />
           </IconButton>
         ),
@@ -130,7 +123,7 @@ export const TableConstructor = <TData extends Record<string, any>>(
 
   let paddingTop = 0;
   let paddingBottom = 0;
-  let displayRows: Row<TData>[] | VirtualItem[] = rows;
+  let displayRows: Row<AnyObject<TData>>[] | VirtualItem[] = rows;
 
   // If the list is large, we need to use the virtualizer
   if (largeList) {
@@ -199,8 +192,8 @@ export const TableConstructor = <TData extends Record<string, any>>(
           )}
           {displayRows.map((displayRow) => {
             const row = !largeList
-              ? (displayRow as Row<TData>)
-              : (rows[displayRow.index] as Row<TData>);
+              ? (displayRow as Row<AnyObject<TData>>)
+              : (rows[displayRow.index] as Row<AnyObject<TData>>);
             return (
               <TableRow key={row.id}>
                 {row.getVisibleCells().map((cell) => {
@@ -225,4 +218,4 @@ export const TableConstructor = <TData extends Record<string, any>>(
       </Table>
     </TableContainer>
   );
-};
+}
