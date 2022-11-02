@@ -13,7 +13,7 @@ import {
 import { useMemo } from "react";
 import { Control, FieldValues, useController, useForm } from "react-hook-form";
 import { toTitleCase } from "../strings";
-import { getInputType, getZodSchema } from "./helpers";
+import { getZodSchema } from "./helpers";
 import { DynamicDialogProps } from "./types";
 
 /**
@@ -36,6 +36,7 @@ export function DynamicDialog<TData>(props: DynamicDialogProps<TData>) {
     onSubmit,
     open,
     optionalKeys = [],
+    selections,
   } = props;
   const schema = useMemo(() => getZodSchema(content, optionalKeys), [content]);
   const { control, handleSubmit } = useForm({ resolver: zodResolver(schema) });
@@ -54,6 +55,7 @@ export function DynamicDialog<TData>(props: DynamicDialogProps<TData>) {
                   label,
                   name,
                   initialValue: value,
+                  selections,
                 }}
                 key={index}
               />
@@ -76,28 +78,41 @@ function DialogInput(props: {
   control: Control<FieldValues, any>;
   label: string;
   name: string;
-  initialValue: any;
+  initialValue: string | number | boolean;
+  selections?: Record<string, string[] | number[]>;
 }) {
-  const { control, name, label, initialValue } = props;
+  const { control, initialValue, label, name, selections } = props;
+
+  const getValidDefaults = useMemo(() => {
+    switch (true) {
+      case initialValue === -1:
+        return "";
+      case selections &&
+        selections[name] &&
+        !selections[name].includes(initialValue as never):
+        return "";
+      default:
+        return initialValue;
+    }
+  }, [initialValue, selections]);
+
   const {
     field,
     formState: { errors },
   } = useController({
     name,
     control,
-    defaultValue: initialValue === -1 ? "" : initialValue,
+    defaultValue: getValidDefaults,
   });
 
-  const inputType = getInputType(initialValue);
-
-  if (inputType === "checkbox") {
+  if (typeof initialValue === "boolean") {
     return (
       <FormControlLabel
         control={<Checkbox {...field} defaultChecked={initialValue} />}
         label={label}
       />
     );
-  } else if (inputType === "array") {
+  } else if (selections && selections[name]) {
     return (
       <TextField
         {...field}
@@ -109,9 +124,9 @@ function DialogInput(props: {
         select
         sx={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}
       >
-        {initialValue.map((option: string) => (
+        {selections[name].map((option: string | number) => (
           <MenuItem key={option} value={option}>
-            {toTitleCase(option)}
+            {typeof option === "string" ? toTitleCase(option) : option}
           </MenuItem>
         ))}
       </TextField>

@@ -3,7 +3,7 @@ import { FieldValues } from "react-hook-form";
 import { DynamicDialog } from "./Dialog";
 import { getGenericValue } from "./helpers";
 import { DynamicTable } from "./Table";
-import { AnyObject, EmptyObject, TableConstructorProps } from "./types";
+import { AnyObject, TableConstructorProps } from "./types";
 
 /**
  * ## PageConstructor
@@ -15,10 +15,15 @@ import { AnyObject, EmptyObject, TableConstructorProps } from "./types";
  * column headers.
  */
 export function TableConstructor<TData>(props: TableConstructorProps<TData>) {
-  const { data, editable, cellOverride, labelOverride, onSave, optionalKeys } =
-    props;
-  const [content, setContent] = useState<AnyObject<TData> | EmptyObject>({});
-  const [open, setOpen] = useState(false);
+  const {
+    data,
+    editable,
+    cellOverride,
+    labelOverride,
+    onSave,
+    optionalKeys,
+    selections,
+  } = props;
 
   const emptySchema = useMemo(
     () =>
@@ -27,14 +32,16 @@ export function TableConstructor<TData>(props: TableConstructorProps<TData>) {
           key,
           getGenericValue(value),
         ])
-      ),
+      ) as AnyObject<TData>,
     [data]
   );
+
+  const [content, setContent] = useState(emptySchema);
+  const [open, setOpen] = useState(false);
 
   /** Closes the dialog and resets values.*/
   function onClose() {
     setOpen(false);
-    setContent({});
   }
 
   /** Opens the dialog and sets values.*/
@@ -61,7 +68,15 @@ export function TableConstructor<TData>(props: TableConstructorProps<TData>) {
     <div className="h-full w-full p-2">
       {editable && open && (
         <DynamicDialog
-          {...{ content, labelOverride, onClose, onSubmit, open, optionalKeys }}
+          {...{
+            content,
+            labelOverride,
+            onClose,
+            onSubmit,
+            open,
+            optionalKeys,
+            selections,
+          }}
         />
       )}
       <DynamicTable

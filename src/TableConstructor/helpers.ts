@@ -3,27 +3,13 @@ import { AnyObject } from "./types";
 
 /** Returns a generic primitive based on input.  */
 export function getGenericValue(value: any) {
-  console.log("ran");
-  if (value instanceof Array) {
-    return [];
+  if (typeof value === "string") {
+    return "";
   } else if (typeof value === "boolean") {
     return false;
   } else if (typeof value === "number") {
     return -1;
   } else return "";
-}
-
-/** Checks which input type to use based on value. */
-export function getInputType(value: any) {
-  if (value instanceof Array) {
-    return "array";
-  } else if (typeof value === "boolean") {
-    return "checkbox";
-  } else if (typeof value === "number") {
-    return "number";
-  } else {
-    return "text";
-  }
 }
 
 /** Creates a Zod schema from an object. */

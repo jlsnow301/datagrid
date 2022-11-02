@@ -11,13 +11,14 @@ export type TableConstructorProps<TData> = {
   labelOverride?: Record<string, string>;
   onSave?: (data: FieldValues) => void;
   optionalKeys?: string[];
+  selections?: Record<string, string[] | number[]>;
 };
 
-export type DynamicDialogProps<TData> = Pick<
+export type DynamicDialogProps<TData> = Omit<
   TableConstructorProps<TData>,
-  "labelOverride" | "optionalKeys"
+  "data"
 > & {
-  content: AnyObject<TData> | EmptyObject;
+  content: AnyObject<TData>;
   open: boolean;
   onClose: () => void;
   onSubmit: (data: FieldValues) => void;
