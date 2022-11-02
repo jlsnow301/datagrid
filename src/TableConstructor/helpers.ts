@@ -3,12 +3,13 @@ import { AnyObject } from "./types";
 
 /** Returns a generic primitive based on input.  */
 export function getGenericValue(value: any) {
+  console.log("ran");
   if (value instanceof Array) {
     return [];
   } else if (typeof value === "boolean") {
     return false;
   } else if (typeof value === "number") {
-    return 0;
+    return -1;
   } else return "";
 }
 
@@ -26,15 +27,19 @@ export function getInputType(value: any) {
 }
 
 /** Creates a Zod schema from an object. */
-export function getZodSchema<TData>(content: AnyObject<TData>) {
+export function getZodSchema<TData>(
+  content: AnyObject<TData>,
+  optionalKeys: string[] = []
+) {
   if (Object.entries(content)?.length === 0) return z.object({});
   const schema = z.object(
     Object.fromEntries(
       Object.entries(content).map(([key, value]) => {
+        const isOptional = optionalKeys.includes(key);
         if (typeof value === "number") {
-          return [key, z.number()];
+          return [key, isOptional ? z.number().optional() : z.number()];
         } else if (typeof value === "string") {
-          return [key, z.string().min(1)];
+          return [key, isOptional ? z.string() : z.string().min(1)];
         } else if (typeof value === "boolean") {
           return [key, z.boolean()];
         } else {

@@ -7,14 +7,15 @@ export type EmptyObject = Record<string, any>;
 export type TableConstructorProps<TData> = {
   data: AnyObject<TData>[];
   editable?: boolean;
-  cellOverride?: ((row: object) => JSX.Element)[];
+  cellOverride?: Record<string, (row: object) => JSX.Element>;
   labelOverride?: Record<string, string>;
   onSave?: (data: FieldValues) => void;
+  optionalKeys?: string[];
 };
 
 export type DynamicDialogProps<TData> = Pick<
   TableConstructorProps<TData>,
-  "labelOverride"
+  "labelOverride" | "optionalKeys"
 > & {
   content: AnyObject<TData> | EmptyObject;
   open: boolean;

@@ -29,8 +29,15 @@ import { DynamicDialogProps } from "./types";
  * fields will be labeled with the key name.
  */
 export function DynamicDialog<TData>(props: DynamicDialogProps<TData>) {
-  const { content, labelOverride, open, onClose, onSubmit } = props;
-  const schema = useMemo(() => getZodSchema(content), [content]);
+  const {
+    content,
+    labelOverride,
+    onClose,
+    onSubmit,
+    open,
+    optionalKeys = [],
+  } = props;
+  const schema = useMemo(() => getZodSchema(content, optionalKeys), [content]);
   const { control, handleSubmit } = useForm({ resolver: zodResolver(schema) });
 
   return (
@@ -75,15 +82,13 @@ function DialogInput(props: {
   const {
     field,
     formState: { errors },
-  } = useController({ name, control, defaultValue: initialValue });
+  } = useController({
+    name,
+    control,
+    defaultValue: initialValue === -1 ? "" : initialValue,
+  });
 
   const inputType = getInputType(initialValue);
-
-  function changeHandler(event: React.ChangeEvent<HTMLInputElement>) {
-    field.onChange(
-      inputType === "number" ? +event.target.value | 0 : event.target.value
-    );
-  }
 
   if (inputType === "checkbox") {
     return (
@@ -120,7 +125,6 @@ function DialogInput(props: {
         helperText={errors[name]?.message as string}
         id={name}
         label={label}
-        onChange={changeHandler}
         sx={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}
         variant="outlined"
       />

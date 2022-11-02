@@ -15,7 +15,8 @@ import { AnyObject, EmptyObject, TableConstructorProps } from "./types";
  * column headers.
  */
 export function TableConstructor<TData>(props: TableConstructorProps<TData>) {
-  const { data, editable, cellOverride, labelOverride, onSave } = props;
+  const { data, editable, cellOverride, labelOverride, onSave, optionalKeys } =
+    props;
   const [content, setContent] = useState<AnyObject<TData> | EmptyObject>({});
   const [open, setOpen] = useState(false);
 
@@ -60,7 +61,7 @@ export function TableConstructor<TData>(props: TableConstructorProps<TData>) {
     <div className="h-full w-full p-2">
       {editable && open && (
         <DynamicDialog
-          {...{ content, labelOverride, open, onClose, onSubmit }}
+          {...{ content, labelOverride, onClose, onSubmit, open, optionalKeys }}
         />
       )}
       <DynamicTable
