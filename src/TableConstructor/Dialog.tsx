@@ -83,14 +83,20 @@ function DialogInput(props: {
 }) {
   const { control, initialValue, label, name, selections } = props;
 
-  const getValidDefaults = useMemo(() => {
+  const validDefault = useMemo(() => {
     switch (true) {
       case initialValue === -1:
         return "";
-      case selections &&
-        selections[name] &&
-        !selections[name].includes(initialValue as never):
-        return "";
+      case selections && selections[name] !== undefined:
+        if (typeof initialValue !== typeof selections![name][0]) {
+          console.warn(
+            "Current value is not the same type as selections. This might make it impossible to select."
+          );
+          return "";
+        }
+        if (!selections![name].includes(initialValue as never)) {
+          return "";
+        }
       default:
         return initialValue;
     }
@@ -102,7 +108,7 @@ function DialogInput(props: {
   } = useController({
     name,
     control,
-    defaultValue: getValidDefaults,
+    defaultValue: validDefault,
   });
 
   if (typeof initialValue === "boolean") {

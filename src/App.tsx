@@ -8,8 +8,8 @@ export const App = () => {
       <TableConstructor
         editable
         data={data}
-        optionalKeys={["first_name"]}
-        // selections={{ age: [15, 33, 46] }}
+        // optionalKeys={["first_name"]}
+        selections={{ age: [1, 3, 5] }}
       />
     </div>
   );

@@ -11,7 +11,7 @@ export type TableConstructorProps<TData> = {
   labelOverride?: Record<string, string>;
   onSave?: (data: FieldValues) => void;
   optionalKeys?: string[];
-  selections?: Record<string, string[] | number[]>;
+  selections?: Record<string, number[] | string[]>;
 };
 
 export type DynamicDialogProps<TData> = Omit<
