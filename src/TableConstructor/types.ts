@@ -1,11 +1,9 @@
 import { FieldValues } from "react-hook-form";
 
-export type AnyObject<Type> = object & Exclude<Type, any[]>;
+export type RowData = Record<string, string | number | boolean>;
 
-export type EmptyObject = Record<string, any>;
-
-export type TableConstructorProps<TData> = {
-  data: AnyObject<TData>[];
+export type TableConstructorProps = {
+  data: RowData[];
   editable?: boolean;
   cellOverride?: Record<string, (row: object) => JSX.Element>;
   labelOverride?: Record<string, string>;
@@ -14,17 +12,14 @@ export type TableConstructorProps<TData> = {
   selections?: Record<string, number[] | string[]>;
 };
 
-export type DynamicDialogProps<TData> = Omit<
-  TableConstructorProps<TData>,
-  "data"
-> & {
-  content: AnyObject<TData>;
+export type DynamicDialogProps = Omit<TableConstructorProps, "data"> & {
+  content: RowData;
   open: boolean;
   onClose: () => void;
   onSubmit: (data: FieldValues) => void;
 };
 
-export type DynamicTableProps<TData> = TableConstructorProps<TData> & {
-  onEdit?: (row: AnyObject<TData>) => void;
+export type DynamicTableProps = TableConstructorProps & {
+  onEdit?: (row: RowData) => void;
   onNew?: () => void;
 };

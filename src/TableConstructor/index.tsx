@@ -3,7 +3,7 @@ import { FieldValues } from "react-hook-form";
 import { DynamicDialog } from "./Dialog";
 import { getGenericValue } from "./helpers";
 import { DynamicTable } from "./Table";
-import { AnyObject, TableConstructorProps } from "./types";
+import { TableConstructorProps, RowData } from "./types";
 
 /**
  * ## PageConstructor
@@ -14,7 +14,7 @@ import { AnyObject, TableConstructorProps } from "./types";
  * Data is any array of objects. The keys of the first object will be used as the
  * column headers.
  */
-export function TableConstructor<TData>(props: TableConstructorProps<TData>) {
+export function TableConstructor(props: TableConstructorProps) {
   const {
     data,
     editable,
@@ -32,7 +32,7 @@ export function TableConstructor<TData>(props: TableConstructorProps<TData>) {
           key,
           getGenericValue(value),
         ])
-      ) as AnyObject<TData>,
+      ) as RowData,
     [data]
   );
 
@@ -45,7 +45,7 @@ export function TableConstructor<TData>(props: TableConstructorProps<TData>) {
   }
 
   /** Opens the dialog and sets values.*/
-  function onEdit(row: AnyObject<TData>) {
+  function onEdit(row: RowData) {
     setContent(row);
     setOpen(true);
   }
@@ -57,7 +57,7 @@ export function TableConstructor<TData>(props: TableConstructorProps<TData>) {
   }
 
   /** If the parent has created a save action, uses it. */
-  function onSubmit(data: FieldValues) {
+  function onSubmit(data: RowData) {
     onClose();
     if (onSave) {
       onSave(data);

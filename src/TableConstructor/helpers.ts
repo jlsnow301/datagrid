@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AnyObject } from "./types";
+import { RowData } from "./types";
 
 /** Returns a generic primitive based on input.  */
 export function getGenericValue(value: any) {
@@ -13,10 +13,7 @@ export function getGenericValue(value: any) {
 }
 
 /** Creates a Zod schema from an object. */
-export function getZodSchema<TData>(
-  content: AnyObject<TData>,
-  optionalKeys: string[] = []
-) {
+export function getZodSchema(content: RowData, optionalKeys: string[] = []) {
   if (Object.entries(content)?.length === 0) return z.object({});
   const schema = z.object(
     Object.fromEntries(
@@ -29,6 +26,7 @@ export function getZodSchema<TData>(
         } else if (typeof value === "boolean") {
           return [key, z.boolean()];
         } else {
+          console.warn("Unsupported type in table constructor.");
           return [key, z.any()];
         }
       })

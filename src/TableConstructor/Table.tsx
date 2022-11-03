@@ -22,7 +22,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtual, VirtualItem } from "react-virtual";
 import { toTitleCase } from "../strings";
-import { AnyObject, DynamicTableProps } from "./types";
+import { DynamicTableProps, RowData } from "./types";
 
 /**
  * ## DynamicTable
@@ -41,7 +41,7 @@ import { AnyObject, DynamicTableProps } from "./types";
  * use the default header. If not provided, the default header will be the
  * capitalized version of the key.
  */
-export function DynamicTable<TData>(props: DynamicTableProps<TData>) {
+export function DynamicTable(props: DynamicTableProps) {
   const {
     cellOverride,
     editable = false,
@@ -55,7 +55,7 @@ export function DynamicTable<TData>(props: DynamicTableProps<TData>) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   /** If the parent has an edit function, use it */
-  function handleEditClick(row: AnyObject<TData>) {
+  function handleEditClick(row: RowData) {
     if (onEdit) {
       onEdit(row);
     }
@@ -68,20 +68,20 @@ export function DynamicTable<TData>(props: DynamicTableProps<TData>) {
     }
   }
 
-  const columns = useMemo<ColumnDef<AnyObject<TData>>[]>(() => {
-    const initialColumns: ColumnDef<AnyObject<TData>>[] = Object.keys(
-      data[0]
-    ).map((key, index) => ({
-      accessorKey: key,
-      cell: ({ row: { original } }) => {
-        if (cellOverride && cellOverride[index]) {
-          return cellOverride[index](original);
-        }
-        return String(original[key as keyof AnyObject<TData>]);
-      },
-      header: (labelOverride && labelOverride[key]) || toTitleCase(key),
-      size: 0,
-    }));
+  const columns = useMemo<ColumnDef<RowData>[]>(() => {
+    const initialColumns: ColumnDef<RowData>[] = Object.keys(data[0]).map(
+      (key, index) => ({
+        accessorKey: key,
+        cell: ({ row: { original } }) => {
+          if (cellOverride && cellOverride[index]) {
+            return cellOverride[index](original);
+          }
+          return String(original[key as keyof RowData]);
+        },
+        header: (labelOverride && labelOverride[key]) || toTitleCase(key),
+        size: 0,
+      })
+    );
     if (editable) {
       initialColumns.push({
         cell: ({ row: { original } }) => (
@@ -123,7 +123,7 @@ export function DynamicTable<TData>(props: DynamicTableProps<TData>) {
 
   let paddingTop = 0;
   let paddingBottom = 0;
-  let displayRows: Row<AnyObject<TData>>[] | VirtualItem[] = rows;
+  let displayRows: Row<RowData>[] | VirtualItem[] = rows;
 
   // If the list is large, we need to use the virtualizer
   if (largeList) {
@@ -192,8 +192,8 @@ export function DynamicTable<TData>(props: DynamicTableProps<TData>) {
           )}
           {displayRows.map((displayRow) => {
             const row = !largeList
-              ? (displayRow as Row<AnyObject<TData>>)
-              : (rows[displayRow.index] as Row<AnyObject<TData>>);
+              ? (displayRow as Row<RowData>)
+              : (rows[displayRow.index] as Row<RowData>);
             return (
               <TableRow key={row.id}>
                 {row.getVisibleCells().map((cell) => {

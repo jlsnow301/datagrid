@@ -14,7 +14,7 @@ import { useMemo } from "react";
 import { Control, FieldValues, useController, useForm } from "react-hook-form";
 import { toTitleCase } from "../strings";
 import { getZodSchema } from "./helpers";
-import { DynamicDialogProps } from "./types";
+import { DynamicDialogProps, RowData } from "./types";
 
 /**
  * ## DynamicDialog
@@ -28,7 +28,7 @@ import { DynamicDialogProps } from "./types";
  * form fields. If the array is shorter than the number of fields, the remaining
  * fields will be labeled with the key name.
  */
-export function DynamicDialog<TData>(props: DynamicDialogProps<TData>) {
+export function DynamicDialog(props: DynamicDialogProps) {
   const {
     content,
     labelOverride,
@@ -75,7 +75,7 @@ export function DynamicDialog<TData>(props: DynamicDialogProps<TData>) {
 
 /** Returns a type of material ui input. */
 function DialogInput(props: {
-  control: Control<FieldValues, any>;
+  control: Control<RowData, any>;
   label: string;
   name: string;
   initialValue: string | number | boolean;
