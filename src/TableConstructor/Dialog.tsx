@@ -1,154 +1,75 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Button,
-  Checkbox,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
-  MenuItem,
-  TextField,
-} from "@mui/material";
-import { useMemo } from "react";
-import { Control, FieldValues, useController, useForm } from "react-hook-form";
-import { toTitleCase } from "../strings";
-import { getZodSchema } from "./helpers";
+import { Button, Dialog, DialogTitle } from "@mui/material";
+import { useState } from "react";
 import { DynamicDialogProps, RowData } from "./types";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import { DynamicForm } from "./Form";
+import { DynamicWizard } from "./Wizard";
 
-/**
- * ## DynamicDialog
- * A dialog component that takes an object and creates a form from it.
- * If a save function is provided, it will be called when the dialog is submitted.
- *
- * Content is any object. The keys of the object will be used as the
- * form fields.
- *
- * LabelOverride is an array of strings that will be used as the labels for the
- * form fields. If the array is shorter than the number of fields, the remaining
- * fields will be labeled with the key name.
- */
 export function DynamicDialog(props: DynamicDialogProps) {
-  const {
-    content,
-    labelOverride,
-    onClose,
-    onSubmit,
-    open,
-    optionalKeys = [],
-    selections,
-  } = props;
-  const schema = useMemo(() => getZodSchema(content, optionalKeys), [content]);
-  const { control, handleSubmit } = useForm({ resolver: zodResolver(schema) });
+  const { initialContent, onClose, modalIsOpen, onSubmit, templates } = props;
+  const [content, setContent] = useState<RowData>(initialContent);
+  const [dialogMode, setDialogMode] = useState<"edit" | "wizard">("edit");
+  const hasTemplates = (templates && templates?.length > 0) || false;
+
+  let dialogTitle;
+  if (dialogMode === "edit") {
+    dialogTitle = `${
+      !content || !Object.values(content)[0] ? "Insert" : "Edit"
+    } Data`;
+  } else if (dialogMode === "wizard") {
+    dialogTitle = "Template Wizard";
+  }
+
+  /** Toggle dialog between edit and wizard modes */
+  const handleChangeMode = () => {
+    setDialogMode(dialogMode === "edit" ? "wizard" : "edit");
+  };
+
+  const onSetTemplate = (selected: RowData) => {
+    setContent(selected);
+    setDialogMode("edit");
+  };
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <DialogTitle>Edit</DialogTitle>
-        <DialogContent>
-          {Object.entries(content).map(([name, value], index) => {
-            const label = labelOverride?.[index] || toTitleCase(name);
-            return (
-              <DialogInput
-                {...{
-                  control,
-                  label,
-                  name,
-                  initialValue: value,
-                  selections,
-                }}
-                key={index}
-              />
-            );
-          })}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button color="primary" type="submit" variant="contained">
-            Save
+    <Dialog
+      maxWidth="md"
+      open={modalIsOpen}
+      onClose={onClose}
+      aria-labelledby="recommendations-dialog"
+    >
+      <DialogTitle
+        id="recommendations-dlg-title"
+        sx={{ display: "flex", justifyContent: "space-between" }}
+      >
+        {dialogTitle}
+        {hasTemplates && (
+          <Button
+            onClick={handleChangeMode}
+            sx={{ paddingLeft: "0.5rem" }}
+            variant="contained"
+          >
+            <SwapHorizIcon sx={{ marginRight: "0.5rem" }} /> Switch to{" "}
+            {dialogMode === "edit" ? "wizard" : "edit"}
           </Button>
-        </DialogActions>
-      </form>
+        )}
+      </DialogTitle>
+      {dialogMode === "edit" ? (
+        <DynamicForm
+          {...{
+            content,
+            onClose,
+            onSubmit,
+          }}
+        />
+      ) : (
+        <DynamicWizard
+          {...{
+            onSetTemplate,
+            onClose,
+            templates,
+          }}
+        />
+      )}
     </Dialog>
   );
-}
-
-/** Returns a type of material ui input. */
-function DialogInput(props: {
-  control: Control<RowData, any>;
-  label: string;
-  name: string;
-  initialValue: string | number | boolean;
-  selections?: Record<string, string[] | number[]>;
-}) {
-  const { control, initialValue, label, name, selections } = props;
-
-  const validDefault = useMemo(() => {
-    switch (true) {
-      case initialValue === -1:
-        return "";
-      case selections && selections[name] !== undefined:
-        if (typeof initialValue !== typeof selections![name][0]) {
-          console.warn(
-            "Current value is not the same type as selections. This might make it impossible to select."
-          );
-          return "";
-        }
-        if (!selections![name].includes(initialValue as never)) {
-          return "";
-        }
-      default:
-        return initialValue;
-    }
-  }, [initialValue, selections]);
-
-  const {
-    field,
-    formState: { errors },
-  } = useController({
-    name,
-    control,
-    defaultValue: validDefault,
-  });
-
-  if (typeof initialValue === "boolean") {
-    return (
-      <FormControlLabel
-        control={<Checkbox {...field} defaultChecked={initialValue} />}
-        label={label}
-      />
-    );
-  } else if (selections && selections[name]) {
-    return (
-      <TextField
-        {...field}
-        error={!!errors[name]}
-        fullWidth
-        helperText={errors[name]?.message as string}
-        id={name}
-        label={label}
-        select
-        sx={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}
-      >
-        {selections[name].map((option: string | number) => (
-          <MenuItem key={option} value={option}>
-            {typeof option === "string" ? toTitleCase(option) : option}
-          </MenuItem>
-        ))}
-      </TextField>
-    );
-  } else {
-    return (
-      <TextField
-        {...field}
-        error={!!errors[name]}
-        fullWidth
-        helperText={errors[name]?.message as string}
-        id={name}
-        label={label}
-        sx={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}
-        variant="outlined"
-      />
-    );
-  }
 }

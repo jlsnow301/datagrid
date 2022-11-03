@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { FieldValues } from "react-hook-form";
 import { DynamicDialog } from "./Dialog";
 import { getGenericValue } from "./helpers";
 import { DynamicTable } from "./Table";
@@ -23,6 +22,7 @@ export function TableConstructor(props: TableConstructorProps) {
     onSave,
     optionalKeys,
     selections,
+    templates,
   } = props;
 
   const emptySchema = useMemo(
@@ -36,24 +36,24 @@ export function TableConstructor(props: TableConstructorProps) {
     [data]
   );
 
-  const [content, setContent] = useState(emptySchema);
-  const [open, setOpen] = useState(false);
+  const [initialContent, setInitialContent] = useState(emptySchema);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
 
   /** Closes the dialog and resets values.*/
   function onClose() {
-    setOpen(false);
+    setModalIsOpen(false);
   }
 
   /** Opens the dialog and sets values.*/
   function onEdit(row: RowData) {
-    setContent(row);
-    setOpen(true);
+    setInitialContent(row);
+    setModalIsOpen(true);
   }
 
   /** Opens the dialog and sets values to empty. */
   function onNew() {
-    setContent(emptySchema);
-    setOpen(true);
+    setInitialContent(emptySchema);
+    setModalIsOpen(true);
   }
 
   /** If the parent has created a save action, uses it. */
@@ -66,16 +66,17 @@ export function TableConstructor(props: TableConstructorProps) {
 
   return (
     <div className="h-full w-full p-2">
-      {editable && open && (
+      {editable && modalIsOpen && (
         <DynamicDialog
           {...{
-            content,
+            initialContent,
             labelOverride,
+            modalIsOpen,
             onClose,
             onSubmit,
-            open,
             optionalKeys,
             selections,
+            templates,
           }}
         />
       )}
