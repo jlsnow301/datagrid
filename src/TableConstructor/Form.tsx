@@ -8,10 +8,11 @@ import {
   MenuItem,
   TextField,
 } from "@mui/material";
+import { Stack } from "@mui/system";
 import { useMemo } from "react";
 import { Control, useController, useForm } from "react-hook-form";
 import { toTitleCase } from "../strings";
-import { getZodSchema } from "./helpers";
+import { getInitialValue, getZodSchema } from "./helpers";
 import { DynamicFormProps, RowData } from "./types";
 
 /**
@@ -31,27 +32,32 @@ export function DynamicForm(props: DynamicFormProps) {
   } = props;
   const schema = useMemo(() => getZodSchema(content, optionalKeys), [content]);
   const { control, handleSubmit } = useForm({ resolver: zodResolver(schema) });
+  const isSmallList = Object.keys(content).length < 8;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <DialogContent>
-        {Object.entries(content)
-          .slice(1)
-          .map(([name, value], index) => {
-            const label = labelOverride?.[index] || toTitleCase(name);
-            return (
-              <DialogInput
-                {...{
-                  control,
-                  label,
-                  name,
-                  initialValue: value,
-                  selections,
-                }}
-                key={index}
-              />
-            );
-          })}
+      <DialogContent
+        sx={{
+          maxHeight: "35rem",
+          border: "thin solid lightgray",
+          overflowX: "hidden",
+        }}
+      >
+        {Object.entries(content).map(([name, value], index) => (
+          <DialogInput
+            {...{
+              control,
+              disabled: index === 0,
+              fullWidth: isSmallList,
+              label:
+                (labelOverride && labelOverride[name]) || toTitleCase(name),
+              name,
+              initialValue: getInitialValue(value, index === 0),
+              selections,
+            }}
+            key={index}
+          />
+        ))}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
@@ -66,12 +72,22 @@ export function DynamicForm(props: DynamicFormProps) {
 /** Returns a type of material ui input. */
 function DialogInput(props: {
   control: Control<RowData, any>;
+  disabled?: boolean;
+  fullWidth?: boolean;
   label: string;
   name: string;
   initialValue: string | number | boolean;
   selections?: Record<string, string[] | number[]>;
 }) {
-  const { control, initialValue, label, name, selections } = props;
+  const {
+    control,
+    disabled,
+    fullWidth,
+    initialValue,
+    label,
+    name,
+    selections,
+  } = props;
 
   const validDefault = useMemo(() => {
     switch (true) {
@@ -125,12 +141,15 @@ function DialogInput(props: {
       <TextField
         {...field}
         error={!!errors[name]}
-        fullWidth
+        fullWidth={fullWidth}
         helperText={errors[name]?.message as string}
         id={name}
         label={label}
         select
-        sx={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}
+        sx={{
+          margin: "0.5rem 0.5rem 0.5rem 0",
+          width: !fullWidth ? "25rem" : "100%",
+        }}
       >
         {selections[name].map((option: string | number) => (
           <MenuItem key={option} value={option}>
@@ -143,13 +162,17 @@ function DialogInput(props: {
     return (
       <TextField
         {...field}
+        disabled={disabled}
         error={!!errors[name]}
-        fullWidth
+        fullWidth={fullWidth}
         helperText={errors[name]?.message as string}
         id={name}
         label={label}
         onChange={changeHandler}
-        sx={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}
+        sx={{
+          margin: "0.5rem 0.5rem 0.5rem 0",
+          width: !fullWidth ? "25rem" : "100%",
+        }}
         variant="outlined"
       />
     );

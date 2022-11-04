@@ -1,6 +1,6 @@
 import { FieldValues } from "react-hook-form";
 
-export type RowData = Record<string, string | number | boolean>;
+export type RowData = Record<string, string | number | boolean | null>;
 
 export type TableConstructorProps = {
   data: RowData[];
@@ -10,6 +10,7 @@ export type TableConstructorProps = {
   onSave?: (data: RowData) => void;
   optionalKeys?: string[];
   selections?: Record<string, number[] | string[]>;
+  displayColumns?: string[];
   templates?: RowData[];
 };
 

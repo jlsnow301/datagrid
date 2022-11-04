@@ -49,6 +49,7 @@ export function DynamicTable(props: DynamicTableProps) {
     labelOverride,
     onEdit,
     onNew,
+    displayColumns = [],
   } = props;
   const largeList = data.length > 100;
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -68,8 +69,12 @@ export function DynamicTable(props: DynamicTableProps) {
     }
   }
 
+  const toDisplay = displayColumns.length
+    ? displayColumns
+    : Object.keys(data[0]);
+
   const columns = useMemo<ColumnDef<RowData>[]>(() => {
-    const initialColumns: ColumnDef<RowData>[] = Object.keys(data[0]).map(
+    const initialColumns: ColumnDef<RowData>[] = toDisplay.map(
       (key, index) => ({
         accessorKey: key,
         cell: ({ row: { original } }) => {

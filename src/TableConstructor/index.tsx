@@ -22,6 +22,7 @@ export function TableConstructor(props: TableConstructorProps) {
     onSave,
     optionalKeys,
     selections,
+    displayColumns,
     templates,
   } = props;
 
@@ -88,6 +89,7 @@ export function TableConstructor(props: TableConstructorProps) {
           labelOverride,
           onEdit,
           onNew,
+          displayColumns,
         }}
       />
     </div>
