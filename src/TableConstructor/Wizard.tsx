@@ -11,10 +11,10 @@ import {
   TableRow,
   TextField,
   Typography,
-} from "@mui/material";
+} from "@material-ui/core";
 import { ChangeEventHandler, useState } from "react";
-import { getDisplayName } from "./helpers";
-import { DynamicWizardProps, RowData } from "./types";
+import { getDisplayName } from "../../util/tableConstructor";
+import { DynamicWizardProps, RowData } from "../../types/tableConstructor";
 
 /**
  * ## DynamicWizard
@@ -64,6 +64,7 @@ export function DynamicWizard(props: DynamicWizardProps) {
           label="Template"
           onChange={handleSelect}
           select
+          sx={{ mt: "0.5rem" }}
           value={getDisplayName(selected)}
         >
           {templates?.map((item, index) => {
@@ -75,7 +76,6 @@ export function DynamicWizard(props: DynamicWizardProps) {
             );
           })}
         </TextField>
-
         {!selected ? (
           <Typography
             color="gray"
@@ -111,7 +111,7 @@ const TemplateInfo = (props: { selected: RowData }) => {
   const { selected } = props;
 
   return (
-    <TableContainer sx={{ maxHeight: "20rem" }}>
+    <TableContainer sx={{ border: "thin solid lightgray", maxHeight: "20rem" }}>
       <Table>
         <TableHead>
           <TableRow>

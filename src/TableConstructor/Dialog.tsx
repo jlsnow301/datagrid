@@ -1,12 +1,13 @@
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { Button, Dialog, DialogTitle } from "@mui/material";
 import { useState } from "react";
-import { DynamicDialogProps, RowData } from "./types";
-import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { DynamicForm } from "./Form";
+import { DynamicDialogProps, RowData } from "./types";
 import { DynamicWizard } from "./Wizard";
 
 export function DynamicDialog(props: DynamicDialogProps) {
-  const { initialContent, onClose, modalIsOpen, onSubmit, templates } = props;
+  const { options, initialContent, modalIsOpen, onClose, onSubmit, templates } =
+    props;
   const [content, setContent] = useState<RowData>(initialContent);
   const [dialogMode, setDialogMode] = useState<"edit" | "wizard">("edit");
   const hasTemplates = (templates && templates?.length > 0) || false;
@@ -57,6 +58,7 @@ export function DynamicDialog(props: DynamicDialogProps) {
         <DynamicForm
           {...{
             content,
+            options,
             onClose,
             onSubmit,
           }}

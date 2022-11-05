@@ -13,26 +13,9 @@ export const App = () => {
     }
     console.log("Edited row", data);
   }
-
-  const displayColumns = [
-    "RiskID",
-    "FocusArea",
-    "Title",
-    "AssetCategory",
-    "Platform",
-    "FunctionCode",
-    "Status",
-    "Severity",
-  ];
-
   return (
     <div className="h-96 bg-slate-600" style={{ width: "75rem" }}>
-      <TableConstructor
-        editable
-        data={riskData}
-        onSave={onSave}
-        displayColumns={displayColumns}
-      />
+      <TableConstructor editable data={riskData} onSave={onSave} />
     </div>
   );
 };

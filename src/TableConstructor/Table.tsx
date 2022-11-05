@@ -1,7 +1,4 @@
-import AddCircleIcon from "@mui/icons-material/AddCircle";
-import EditIcon from "@mui/icons-material/Edit";
 import {
-  IconButton,
   Paper,
   Table,
   TableBody,
@@ -10,6 +7,8 @@ import {
   TableHead,
   TableRow,
 } from "@mui/material";
+import AddCircleIcon from "@mui/icons-material/AddCircle";
+import EditIcon from "@mui/icons-material/Edit";
 import {
   ColumnDef,
   flexRender,
@@ -19,38 +18,18 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
+import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtual, VirtualItem } from "react-virtual";
-import { toTitleCase } from "../strings";
+import { tableStyles } from "./tableStyles";
 import { DynamicTableProps, RowData } from "./types";
+import { toTitleCase } from "../strings";
+import { hasOption } from "./helpers";
+import { IconButton } from "@mui/material";
 
-/**
- * ## DynamicTable
- * A table component that takes an array of objects and creates a table from it.
- *
- * Data is any array of objects. The keys of the first object will be used as the
- * column headers.
- *
- * Editable is a boolean that determines if the table is editable or not.
- *
- * CellOverride is an array of functions that takes a cell and returns a JSX.Element. This
- * allows you to override the default cell rendering.
- *
- * Label override is an array of strings that will be used as the column headers.
- * If the array is shorter than the number of columns, the remaining columns will
- * use the default header. If not provided, the default header will be the
- * capitalized version of the key.
- */
 export function DynamicTable(props: DynamicTableProps) {
-  const {
-    cellOverride,
-    editable = false,
-    data = [],
-    labelOverride,
-    onEdit,
-    onNew,
-    displayColumns = [],
-  } = props;
+  const { editable, options, data, onEdit, onNew } = props;
+  const classes = tableStyles();
   const largeList = data.length > 100;
   const [sorting, setSorting] = useState<SortingState>([]);
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -69,24 +48,39 @@ export function DynamicTable(props: DynamicTableProps) {
     }
   }
 
-  const toDisplay = displayColumns.length
-    ? displayColumns
-    : Object.keys(data[0]);
-
   const columns = useMemo<ColumnDef<RowData>[]>(() => {
-    const initialColumns: ColumnDef<RowData>[] = toDisplay.map(
-      (key, index) => ({
+    const initialColumns: ColumnDef<RowData>[] = [
+      {
+        accessorKey: "index",
+        cell: ({ row }) => row.index + 1,
+        id: "index",
+        header: "Index",
+        size: 0,
+      } as ColumnDef<RowData>,
+    ];
+
+    const toDisplay =
+      (options &&
+        Object.keys(options).filter(
+          (key) => !hasOption(key, options, ["noTable", "hidden"])
+        )) ||
+      Object.keys(data[0]);
+
+    toDisplay.map((key) =>
+      initialColumns.push({
         accessorKey: key,
         cell: ({ row: { original } }) => {
-          if (cellOverride && cellOverride[index]) {
-            return cellOverride[index](original);
+          if (options && options[key]?.cell) {
+            const renderFn = options[key]?.cell;
+            if (renderFn) renderFn(original[key]);
           }
           return String(original[key as keyof RowData]);
         },
-        header: (labelOverride && labelOverride[key]) || toTitleCase(key),
+        header: (options && options[key]?.label) || toTitleCase(key),
         size: 0,
       })
     );
+
     if (editable) {
       initialColumns.push({
         cell: ({ row: { original } }) => (
@@ -103,8 +97,9 @@ export function DynamicTable(props: DynamicTableProps) {
         size: 0,
       });
     }
+
     return initialColumns;
-  }, [data, labelOverride, editable]);
+  }, [data]);
 
   const table = useReactTable({
     data,
@@ -148,18 +143,19 @@ export function DynamicTable(props: DynamicTableProps) {
 
   return (
     <TableContainer
-      className="h-full"
+      className={classes.tableContainer}
       component={Paper}
       ref={tableContainerRef}
     >
       <Table stickyHeader>
-        <TableHead>
+        <TableHead className={classes.cellHeader}>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
                 return (
                   <TableCell
                     align="right"
+                    className={classes.cellHeader}
                     key={header.id}
                     colSpan={header.colSpan}
                     style={{ width: header.getSize() }}
@@ -200,10 +196,22 @@ export function DynamicTable(props: DynamicTableProps) {
               ? (displayRow as Row<RowData>)
               : (rows[displayRow.index] as Row<RowData>);
             return (
-              <TableRow key={row.id}>
+              <TableRow
+                className={clsx(
+                  classes.tableRow,
+                  row.index % 2 === 0 && classes.lightRow,
+                  row.index % 2 !== 0 && classes.darkRow
+                )}
+                key={row.id}
+              >
                 {row.getVisibleCells().map((cell) => {
                   return (
-                    <TableCell align="right" key={cell.id}>
+                    <TableCell
+                      align="right"
+                      className={classes.cell}
+                      key={cell.id}
+                      padding="none"
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

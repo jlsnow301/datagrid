@@ -1,11 +1,14 @@
 import { z } from "zod";
-import { RowData } from "./types";
+import {
+  CellData,
+  ConstructorOption,
+  ConstructorOptions,
+  RowData,
+} from "./types";
 
 /** Returns a generic primitive based on input.  */
-export function getGenericValue(value: any) {
-  if (typeof value === "string") {
-    return "";
-  } else if (typeof value === "boolean") {
+export function getGenericValue(value: CellData) {
+  if (typeof value === "boolean") {
     return false;
   } else if (typeof value === "number") {
     return -1;
@@ -19,7 +22,8 @@ export function getDisplayName(data: RowData | undefined) {
   return name?.toString() || "";
 }
 
-export function getInitialValue(value: any, isID = false) {
+/** Tries to properly display null data on form */
+export function getInitialValue(value: CellData, isID = false) {
   let initialValue: string | number | boolean = "";
   if (value === null) {
     initialValue = "";
@@ -31,27 +35,58 @@ export function getInitialValue(value: any, isID = false) {
   return initialValue;
 }
 
+/** Returns an array containing the selections key on options */
+export function getSelections(key: string, options?: ConstructorOptions) {
+  if (!options || !options[key]) {
+    return [];
+  }
+  return options[key].selections || [];
+}
+
 /** Creates a Zod schema from an object. */
-export function getZodSchema(content: RowData, optionalKeys: string[] = []) {
+export function getZodSchema(content: RowData, options?: ConstructorOptions) {
   if (Object.entries(content)?.length === 0) return z.object({});
-  const schema = z.object(
+  return z.object(
     Object.fromEntries(
-      Object.entries(content).map(([key, value], index) => {
-        const isOptional = optionalKeys.includes(key);
-        if (index === 0) {
-          return [key, z.string().optional()];
-        } else if (typeof value === "number") {
-          return [key, isOptional ? z.number().optional() : z.number()];
-        } else if (typeof value === "string") {
-          return [key, isOptional ? z.string() : z.string().min(1)];
-        } else if (typeof value === "boolean") {
-          return [key, z.boolean()];
-        } else {
-          console.warn("Unsupported type in table constructor.");
-          return [key, z.any()];
-        }
-      })
+      Object.entries(content)
+        .filter(([key]) => !hasOption(key, options, "hidden"))
+        .map(([key, value]) => {
+          const isOptional = hasOption(key, options, "optional");
+          if (typeof value === "number") {
+            return [key, isOptional ? z.number().optional() : z.number()];
+          } else if (typeof value === "string") {
+            return [
+              key,
+              isOptional ? z.string().optional() : z.string().min(1),
+            ];
+          } else if (typeof value === "boolean") {
+            return [key, z.boolean()];
+          } else {
+            console.warn("Unsupported type in table constructor.");
+            return [key, z.any()];
+          }
+        })
     )
   );
-  return schema;
+}
+
+/**
+ * Check if the stated key has a certain option.
+ * Takes option as a string or an array of strings.
+ */
+export function hasOption(
+  key: string,
+  options?: ConstructorOptions,
+  option?: keyof ConstructorOption | Array<keyof ConstructorOption>
+) {
+  if (!options || !options[key]) {
+    return false;
+  }
+  if (typeof option === "string") {
+    return Object.keys(options[key]).includes(option);
+  }
+  if (option instanceof Array) {
+    return option.some((opt) => Object.keys(options[key]).includes(opt));
+  }
+  return false;
 }

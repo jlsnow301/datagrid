@@ -2,40 +2,25 @@ import { useMemo, useState } from "react";
 import { DynamicDialog } from "./Dialog";
 import { getGenericValue } from "./helpers";
 import { DynamicTable } from "./Table";
-import { TableConstructorProps, RowData } from "./types";
+import { RowData, TableConstructorProps } from "./types";
 
-/**
- * ## PageConstructor
- * A page component that takes an array of objects and creates a table from it.
- * If marked as editable, it will also create a dialog for editing the data.
- * If a save function is provided, it will be called when the dialog is submitted.
- *
- * Data is any array of objects. The keys of the first object will be used as the
- * column headers.
- */
 export function TableConstructor(props: TableConstructorProps) {
-  const {
-    data,
-    editable,
-    cellOverride,
-    labelOverride,
-    onSave,
-    optionalKeys,
-    selections,
-    displayColumns,
-    templates,
-  } = props;
+  const { data, editable, options, onSave, templates } = props;
 
-  const emptySchema = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(data[0])?.map(([key, value]) => [
-          key,
-          getGenericValue(value),
-        ])
-      ) as RowData,
-    [data]
-  );
+  const emptySchema = useMemo(() => {
+    const toDisplay =
+      (options &&
+        Object.fromEntries(
+          Object.entries(options).filter(
+            ([, value]) => !value.noForm && !value.hidden
+          )
+        )) ||
+      data[0];
+    return Object.keys(toDisplay).reduce((acc, key) => {
+      acc[key] = getGenericValue(data[0][key]);
+      return acc;
+    }, {} as RowData);
+  }, [data, options]);
 
   const [initialContent, setInitialContent] = useState(emptySchema);
   const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -66,32 +51,29 @@ export function TableConstructor(props: TableConstructorProps) {
   }
 
   return (
-    <div className="h-full w-full p-2">
+    <>
       {editable && modalIsOpen && (
         <DynamicDialog
           {...{
+            options,
             initialContent,
-            labelOverride,
             modalIsOpen,
             onClose,
             onSubmit,
-            optionalKeys,
-            selections,
             templates,
           }}
         />
       )}
+
       <DynamicTable
         {...{
           data,
           editable,
-          cellOverride,
-          labelOverride,
+          options,
           onEdit,
           onNew,
-          displayColumns,
         }}
       />
-    </div>
+    </>
   );
 }
