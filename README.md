@@ -37,9 +37,9 @@ Useful if you're building with data you don't want to directly mutate, or take u
 
 ```TSX
 const options = {
-  name: { noTable: true }
-  job: { label: "Career" }
-  age: { noForm: true }
+  name: { noTable: true },
+  job: { label: "Career"},
+  age: { noForm: true },
 } // if options are provided that are NOT valid, they will be skipped
 ```
 
