@@ -5,7 +5,7 @@ Fully dynamic. Add in some options if you want.
 
 This will populate a complete table with valid json data:
 ```TSX
-import {TableConstructor from "./PATH/TableConstructor/"
+import { TableConstructor } from "./PATH/TableConstructor/"
 
 const data = [{name: "Jerm", age: 34, job: "Developer", employed: true}]
 
