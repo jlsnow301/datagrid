@@ -1,18 +1,21 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
+import { RowData, TableConstructorProps } from "./types";
 import { DynamicDialog } from "./Dialog";
 import { getGenericValue } from "./helpers";
 import { DynamicTable } from "./Table";
-import { RowData, TableConstructorProps } from "./types";
 
-export function TableConstructor(props: TableConstructorProps) {
-  const { data, editable, options, onSave, templates } = props;
+/** Memoized below */
+function TableComponent(props: TableConstructorProps) {
+  const { data, editable, label, onDelete, onSave, options, templates } = props;
 
-  const emptySchema = useMemo(() => {
+  const emptyForm = useMemo(() => {
+    if (!data || !data.length) return {};
     const toDisplay =
       (options &&
         Object.fromEntries(
-          Object.entries(options).filter(
-            ([, value]) => !value.noForm && !value.hidden
+          Object.entries(options)?.filter(
+            // We need to filter out invalid and hidden options
+            ([key, value]) => !value.noForm && !value.hidden && key in data[0]
           )
         )) ||
       data[0];
@@ -22,8 +25,10 @@ export function TableConstructor(props: TableConstructorProps) {
     }, {} as RowData);
   }, [data, options]);
 
-  const [initialContent, setInitialContent] = useState(emptySchema);
+  const [formContent, setFormContent] = useState(emptyForm);
   const [modalIsOpen, setModalIsOpen] = useState(false);
+  const editing =
+    Object.keys(formContent).length !== Object.keys(emptyForm).length;
 
   /** Closes the dialog and resets values.*/
   function onClose() {
@@ -32,13 +37,13 @@ export function TableConstructor(props: TableConstructorProps) {
 
   /** Opens the dialog and sets values.*/
   function onEdit(row: RowData) {
-    setInitialContent(row);
+    setFormContent(row);
     setModalIsOpen(true);
   }
 
   /** Opens the dialog and sets values to empty. */
   function onNew() {
-    setInitialContent(emptySchema);
+    setFormContent(emptyForm);
     setModalIsOpen(true);
   }
 
@@ -55,11 +60,14 @@ export function TableConstructor(props: TableConstructorProps) {
       {editable && modalIsOpen && (
         <DynamicDialog
           {...{
-            options,
-            initialContent,
+            editing,
+            formContent,
+            label,
             modalIsOpen,
             onClose,
+            onDelete,
             onSubmit,
+            options,
             templates,
           }}
         />
@@ -69,6 +77,7 @@ export function TableConstructor(props: TableConstructorProps) {
         {...{
           data,
           editable,
+          label,
           options,
           onEdit,
           onNew,
@@ -77,3 +86,12 @@ export function TableConstructor(props: TableConstructorProps) {
     </>
   );
 }
+
+/**
+ * ## TableConstructor
+ * This component is a wrapper around the DynamicTable and DynamicDialog components.
+ * It is a swiss army knife of displaying tables with editable data.
+ *
+ * It can be run on data alone, but can be fed templates, editable status, and options.
+ */
+export const TableConstructor = memo(TableComponent);

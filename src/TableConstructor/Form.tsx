@@ -7,30 +7,30 @@ import {
   FormControlLabel,
   MenuItem,
   TextField,
-} from "@material-ui/core";
+  Typography,
+} from "@mui/material";
 import { useMemo } from "react";
 import { Control, useController, useForm } from "react-hook-form";
 import {
-  DynamicFormProps,
   ConstructorOptions,
+  DynamicFormProps,
   RowData,
-} from "../../types/tableConstructor";
-import { toTitleCase } from "../../util/strings";
+} from "./types";
+import { toTitleCase } from "../strings";
 import {
   getInitialValue,
   getSelections,
   getZodSchema,
   hasOption,
-} from "../../util/tableConstructor";
+} from "./helpers";
 
 /**
  * ## DynamicForm
- * Ideally used in conjuction with DynamicTable. This component will take a row
- * of data and create a form from it. The form will be pre-populated with the
- * data from the row.
+ * This component is used to create a form that will be used to edit a row in the
+ * table. The form will be pre-populated with the data from the row.
  */
 export function DynamicForm(props: DynamicFormProps) {
-  const { content, options, onClose, onSubmit } = props;
+  const { content, editing, onClose, onDelete, onSubmit, options } = props;
   const schema = useMemo(() => getZodSchema(content, options), [content]);
   const { control, handleSubmit } = useForm({ resolver: zodResolver(schema) });
 
@@ -43,8 +43,18 @@ export function DynamicForm(props: DynamicFormProps) {
 
   const isSmallList = toDisplay.length < 12;
 
+  /** Copies the edited data over onto the original object */
   function onSubmitClick(data: RowData) {
     onSubmit({ ...content, ...data });
+  }
+
+  /** If a delete function exists and the ID is valid, call it */
+  function onDeleteClick() {
+    const value = Object.values(content)[0];
+    if (onDelete && typeof value === "string") {
+      onDelete(value);
+      onClose();
+    }
   }
 
   return (
@@ -70,11 +80,38 @@ export function DynamicForm(props: DynamicFormProps) {
           />
         ))}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button color="primary" type="submit" variant="contained">
-          Save
-        </Button>
+      <DialogActions
+        sx={{ display: "flex", justifyContent: "space-between", width: "100%" }}
+      >
+        <div>
+          {content.Creator && (
+            <Typography
+              color="gray"
+              sx={{ marginLeft: "1rem" }}
+              variant="caption"
+            >
+              Created by {content.Creator}
+            </Typography>
+          )}
+        </div>
+        <div>
+          <Button onClick={onClose} sx={{ marginRight: "0.5rem" }}>
+            Cancel
+          </Button>
+          {editing && !!onDelete && (
+            <Button
+              color="primary"
+              variant="contained"
+              onClick={onDeleteClick}
+              sx={{ marginRight: "0.5rem" }}
+            >
+              Delete
+            </Button>
+          )}
+          <Button color="primary" type="submit" variant="contained">
+            Save
+          </Button>
+        </div>
       </DialogActions>
     </form>
   );
@@ -100,9 +137,12 @@ function DialogInput(props: {
 
   const selections = getSelections(name, options);
 
+  /** The initial value must be something viewable. Reverts to "". */
   const validDefault = useMemo(() => {
     switch (true) {
       case initialValue === -1:
+        return "";
+      case initialValue === null:
         return "";
       case selections.length > 0:
         if (!selections.includes(initialValue as never)) {

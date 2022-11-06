@@ -1,35 +1,51 @@
-import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { Button, Dialog, DialogTitle } from "@mui/material";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { useState } from "react";
-import { DynamicForm } from "./Form";
 import { DynamicDialogProps, RowData } from "./types";
+import { toTitleCase } from "../strings";
+import { DynamicForm } from "./Form";
 import { DynamicWizard } from "./Wizard";
 
+/**
+ * ## DynamicDialog
+ * Parent component for the form and wizard dialogs. This component is used to
+ * create a dialog that will be used to edit a row in the table. The dialog will
+ * be pre-populated with the data from the row.
+ */
 export function DynamicDialog(props: DynamicDialogProps) {
-  const { options, initialContent, modalIsOpen, onClose, onSubmit, templates } =
-    props;
-  const [content, setContent] = useState<RowData>(initialContent);
+  const {
+    editing,
+    formContent,
+    label,
+    modalIsOpen,
+    onClose,
+    onDelete,
+    onSubmit,
+    options,
+    templates,
+  } = props;
+  const [content, setContent] = useState<RowData>(formContent);
   const [dialogMode, setDialogMode] = useState<"edit" | "wizard">("edit");
   const hasTemplates = (templates && templates?.length > 0) || false;
 
   let dialogTitle;
   if (dialogMode === "edit") {
-    dialogTitle = `${
-      !content || !Object.values(content)[0] ? "Insert" : "Edit"
-    } Data`;
+    dialogTitle = `${editing ? "Edit" : "Insert"} ${
+      (label && toTitleCase(label)) || "Data"
+    }`;
   } else if (dialogMode === "wizard") {
     dialogTitle = "Template Wizard";
   }
 
   /** Toggle dialog between edit and wizard modes */
-  const handleChangeMode = () => {
+  function handleChangeMode() {
     setDialogMode(dialogMode === "edit" ? "wizard" : "edit");
-  };
+  }
 
-  const onSetTemplate = (selected: RowData) => {
+  function onSetTemplate(selected: RowData) {
     setContent(selected);
     setDialogMode("edit");
-  };
+  }
 
   return (
     <Dialog
@@ -43,23 +59,24 @@ export function DynamicDialog(props: DynamicDialogProps) {
         sx={{ display: "flex", justifyContent: "space-between" }}
       >
         {dialogTitle}
-        {hasTemplates && (
-          <Button
-            onClick={handleChangeMode}
-            sx={{ paddingLeft: "0.5rem" }}
-            variant="contained"
-          >
-            <SwapHorizIcon sx={{ marginRight: "0.5rem" }} /> Switch to{" "}
-            {dialogMode === "edit" ? "wizard" : "edit"}
-          </Button>
-        )}
+        <Button
+          disabled={!hasTemplates}
+          onClick={handleChangeMode}
+          sx={{ paddingLeft: "0.5rem" }}
+          variant="contained"
+        >
+          <SwapHorizIcon sx={{ marginRight: "0.5rem" }} /> Switch to{" "}
+          {dialogMode === "edit" ? "wizard" : "edit"}
+        </Button>
       </DialogTitle>
       {dialogMode === "edit" ? (
         <DynamicForm
           {...{
             content,
+            editing,
             options,
             onClose,
+            onDelete,
             onSubmit,
           }}
         />

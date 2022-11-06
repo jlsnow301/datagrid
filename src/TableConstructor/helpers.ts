@@ -45,11 +45,10 @@ export function getSelections(key: string, options?: ConstructorOptions) {
 
 /** Creates a Zod schema from an object. */
 export function getZodSchema(content: RowData, options?: ConstructorOptions) {
-  if (Object.entries(content)?.length === 0) return z.object({});
   return z.object(
     Object.fromEntries(
       Object.entries(content)
-        .filter(([key]) => !hasOption(key, options, "hidden"))
+        .filter(([key]) => !hasOption(key, options, ["noForm", "hidden"]))
         .map(([key, value]) => {
           const isOptional = hasOption(key, options, "optional");
           if (typeof value === "number") {
@@ -62,8 +61,7 @@ export function getZodSchema(content: RowData, options?: ConstructorOptions) {
           } else if (typeof value === "boolean") {
             return [key, z.boolean()];
           } else {
-            console.warn("Unsupported type in table constructor.");
-            return [key, z.any()];
+            return [key, isOptional ? z.any().optional() : z.any()];
           }
         })
     )
@@ -89,4 +87,15 @@ export function hasOption(
     return option.some((opt) => Object.keys(options[key]).includes(opt));
   }
   return false;
+}
+
+/**
+ * Checks keys against the original.
+ * Useful to distinguish if we're editing or inserting data,
+ * since the IDs are not included on the "insert" form.
+ */
+export function hasEqualKeys(newData: RowData, original: RowData) {
+  return Object.keys(original).every((key) =>
+    Object.keys(newData).includes(key)
+  );
 }

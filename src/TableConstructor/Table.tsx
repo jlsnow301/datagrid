@@ -1,4 +1,5 @@
 import {
+  Button,
   Paper,
   Table,
   TableBody,
@@ -10,7 +11,9 @@ import {
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import EditIcon from "@mui/icons-material/Edit";
 import {
+  AccessorColumnDef,
   ColumnDef,
+  DisplayColumnDef,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
@@ -25,13 +28,24 @@ import { tableStyles } from "./tableStyles";
 import { DynamicTableProps, RowData } from "./types";
 import { toTitleCase } from "../strings";
 import { hasOption } from "./helpers";
-import { IconButton } from "@mui/material";
 
+/**
+ * ## DynamicTable
+ * This component is a wrapper around the react-table library. It is designed to
+ * be used with the TableConstructor component. It will display the data in a
+ * table and allow the user to edit the data in a form.
+ */
 export function DynamicTable(props: DynamicTableProps) {
-  const { editable, options, data, onEdit, onNew } = props;
+  const { data, editable, label, onEdit, onNew, options } = props;
+  // Whatever, I really don't know the new MUI command for this
   const classes = tableStyles();
+  const [sorting, setSorting] = useState<SortingState>([
+    {
+      id: "#",
+      desc: true,
+    },
+  ]);
   const largeList = data.length > 100;
-  const [sorting, setSorting] = useState<SortingState>([]);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   /** If the parent has an edit function, use it */
@@ -48,15 +62,18 @@ export function DynamicTable(props: DynamicTableProps) {
     }
   }
 
+  /**
+   * Creates a column definition for each key in the data.
+   * Skips columns that have hidden or noTable options.
+   */
   const columns = useMemo<ColumnDef<RowData>[]>(() => {
     const initialColumns: ColumnDef<RowData>[] = [
       {
-        accessorKey: "index",
+        accessorFn: (row: Row<RowData>) => row.index + 1,
         cell: ({ row }) => row.index + 1,
-        id: "index",
-        header: "Index",
+        id: "#",
         size: 0,
-      } as ColumnDef<RowData>,
+      } as DisplayColumnDef<RowData>,
     ];
 
     const toDisplay =
@@ -72,30 +89,38 @@ export function DynamicTable(props: DynamicTableProps) {
         cell: ({ row: { original } }) => {
           if (options && options[key]?.cell) {
             const renderFn = options[key]?.cell;
-            if (renderFn) renderFn(original[key]);
+            if (renderFn) {
+              return renderFn(original[key]);
+            }
           }
-          return String(original[key as keyof RowData]);
+          return (original[key] && String(original[key])) || "";
         },
-        header: (options && options[key]?.label) || toTitleCase(key),
+        header:
+          (options && options[key]?.label) ||
+          (key === "Title" && label && toTitleCase(label)) ||
+          toTitleCase(key),
         size: 0,
-      })
+      } as AccessorColumnDef<RowData>)
     );
 
     if (editable) {
       initialColumns.push({
         cell: ({ row: { original } }) => (
-          <IconButton onClick={() => handleEditClick(original)}>
+          <Button
+            onClick={() => handleEditClick(original)}
+            sx={{ marginRight: "0.5rem" }}
+          >
             <EditIcon />
-          </IconButton>
+          </Button>
         ),
         id: "actions",
         header: () => (
-          <IconButton onClick={handleNewClick}>
+          <Button onClick={handleNewClick}>
             <AddCircleIcon />
-          </IconButton>
+          </Button>
         ),
         size: 0,
-      });
+      } as DisplayColumnDef<RowData>);
     }
 
     return initialColumns;
@@ -154,7 +179,6 @@ export function DynamicTable(props: DynamicTableProps) {
               {headerGroup.headers.map((header) => {
                 return (
                   <TableCell
-                    align="right"
                     className={classes.cellHeader}
                     key={header.id}
                     colSpan={header.colSpan}
@@ -207,7 +231,6 @@ export function DynamicTable(props: DynamicTableProps) {
                 {row.getVisibleCells().map((cell) => {
                   return (
                     <TableCell
-                      align="right"
                       className={classes.cell}
                       key={cell.id}
                       padding="none"

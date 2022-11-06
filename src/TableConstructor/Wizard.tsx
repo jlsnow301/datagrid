@@ -11,10 +11,10 @@ import {
   TableRow,
   TextField,
   Typography,
-} from "@material-ui/core";
+} from "@mui/material";
 import { ChangeEventHandler, useState } from "react";
-import { getDisplayName } from "../../util/tableConstructor";
-import { DynamicWizardProps, RowData } from "../../types/tableConstructor";
+import { DynamicWizardProps, RowData } from "./types";
+import { getDisplayName } from "./helpers";
 
 /**
  * ## DynamicWizard
