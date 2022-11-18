@@ -16,7 +16,7 @@ Where table constructor really shines is in creating complete forms with type va
 Given the above example, a tableconstructor marked "editable" will require the user to type in a string name, a number age, string job, and offer a checkbox for employed.
 
 
-I'm still working on it a bit, but as of yet, it will customize the form based on the data[0]'s type. This creates text and number fields, checkboxes, and selections (req: "selections" in options).
+I'm still working on it a bit, but as of yet, it will customize the form based on the data[0]'s type. This creates text and number fields, checkboxes, and selections (req: "selections" in options). In the event where data may be empty: We can manually trigger the form to use number, boolean, selectors etc.
 
 
 `TableConstructor` has optional props:
