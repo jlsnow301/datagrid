@@ -11,11 +11,7 @@ import {
 } from "@mui/material";
 import { useMemo } from "react";
 import { Control, useController, useForm } from "react-hook-form";
-import {
-  ConstructorOptions,
-  DynamicFormProps,
-  RowData,
-} from "./types";
+import { ConstructorOptions, DynamicFormProps, RowData } from "./types";
 import { toTitleCase } from "../strings";
 import {
   getInitialValue,
@@ -26,13 +22,19 @@ import {
 
 /**
  * ## DynamicForm
- * This component is used to create a form that will be used to edit a row in the
- * table. The form will be pre-populated with the data from the row.
+ * Generates a form based on the content and options provided. The form will
+ * be pre-populated with the data from the row, or use a template.
  */
 export function DynamicForm(props: DynamicFormProps) {
   const { content, editing, onClose, onDelete, onSubmit, options } = props;
   const schema = useMemo(() => getZodSchema(content, options), [content]);
-  const { control, handleSubmit } = useForm({ resolver: zodResolver(schema) });
+  const {
+    formState: { dirtyFields, isDirty },
+    control,
+    handleSubmit,
+  } = useForm({
+    resolver: zodResolver(schema),
+  });
 
   const toDisplay =
     (options &&
@@ -45,7 +47,19 @@ export function DynamicForm(props: DynamicFormProps) {
 
   /** Copies the edited data over onto the original object */
   function onSubmitClick(data: RowData) {
-    onSubmit({ ...content, ...data });
+    if (Object.keys(dirtyFields).every((key) => data[key] === content[key])) {
+      onClose();
+      return;
+    }
+    onSubmit({
+      ...content,
+      ...Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [
+          key,
+          value === "" ? null : value,
+        ])
+      ),
+    });
   }
 
   /** If a delete function exists and the ID is valid, call it */
@@ -108,7 +122,12 @@ export function DynamicForm(props: DynamicFormProps) {
               Delete
             </Button>
           )}
-          <Button color="primary" type="submit" variant="contained">
+          <Button
+            color="primary"
+            disabled={!isDirty}
+            type="submit"
+            variant="contained"
+          >
             Save
           </Button>
         </div>
@@ -143,7 +162,7 @@ function DialogInput(props: {
       case initialValue === -1:
         return "";
       case initialValue === null:
-        return "";
+        return;
       case selections.length > 0:
         if (!selections.includes(initialValue as never)) {
           return "";
@@ -197,6 +216,9 @@ function DialogInput(props: {
           width: !fullWidth ? "25rem" : "100%",
         }}
       >
+        {hasOption(name, options, "optional") && (
+          <MenuItem value="">None</MenuItem>
+        )}
         {selections?.map((option) => (
           <MenuItem key={option} value={option}>
             {typeof option === "string" ? toTitleCase(option) : option}

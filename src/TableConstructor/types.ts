@@ -1,3 +1,5 @@
+import { Row } from "@tanstack/react-table";
+
 export type CellData = string | number | boolean | null;
 
 export type DynamicDialogProps = Omit<TableConstructorProps, "data"> & {
@@ -15,7 +17,8 @@ export type DynamicFormProps = Omit<
   content: RowData;
 };
 
-export type DynamicTableProps = TableConstructorProps & {
+export type DynamicTableProps = Omit<TableConstructorProps, "editable"> & {
+  editable: boolean;
   onEdit?: (row: RowData) => void;
   onNew?: () => void;
 };
@@ -25,33 +28,63 @@ export type DynamicWizardProps = Pick<TableConstructorProps, "templates"> &
     onSetTemplate: (template: RowData) => void;
   };
 
-export type ConstructorOption = Partial<{
+type CommonOptions = Partial<{
   cell: (value: CellData) => JSX.Element;
   label: string;
   hidden: boolean;
   multiline: boolean;
   noForm: boolean;
   noTable: boolean;
-  optional: boolean;
   selections: string[] | number[];
+  size: "sm" | "md" | "lg" | "xl";
 }>;
+
+type TypeOptions =
+  | {
+      number?: true;
+      boolean?: false;
+      optional?: false;
+    }
+  | {
+      number?: false;
+      boolean?: false;
+      optional?: true;
+    }
+  | {
+      number?: false;
+      boolean?: true;
+      optional?: false;
+    };
+
+export type ConstructorOption = CommonOptions & TypeOptions;
 
 export type ConstructorOptions = Record<string, ConstructorOption>;
 
 export type RowData = Record<string, CellData>;
 
-export type TableConstructorProps = {
+type CommonProps = {
   data: RowData[];
-  // Adds edit/insert, then creates dialogs for editing/inserting rows
-  editable?: boolean;
-  // The label to be displayed on the edit/insert button and empty table
   label?: string;
-  // Allows you to edit how inputs are displayed in the edit dialog
+  grayscale?: boolean;
+  noIndex?: boolean;
   options?: ConstructorOptions;
-  // This must be a function that takes a string and returns nothing
-  onDelete?: (id: string) => void;
-  // This must be the function that you want to call when you want to edit a row
-  onSave?: (data: RowData) => void;
-  // An array of objects that can be used to fill in the form
-  templates?: RowData[];
+  onSelect?: (row?: Row<RowData>) => void;
 };
+
+type EditableProps =
+  | {
+      // Adds edit/insert, then creates dialogs for editing/inserting rows
+      editable: true;
+      onDelete?: (id: string) => void;
+      onSave: (data: RowData) => void;
+      // An array of objects that can be used to fill in the form
+      templates?: RowData[];
+    }
+  | {
+      editable?: false;
+      onDelete?: never;
+      onSave?: never;
+      templates?: never;
+    };
+
+export type TableConstructorProps = CommonProps & EditableProps;

@@ -7,6 +7,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
 } from "@mui/material";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import EditIcon from "@mui/icons-material/Edit";
@@ -27,7 +28,7 @@ import { useVirtual, VirtualItem } from "react-virtual";
 import { tableStyles } from "./tableStyles";
 import { DynamicTableProps, RowData } from "./types";
 import { toTitleCase } from "../strings";
-import { hasOption } from "./helpers";
+import { getColumnSize, hasOption } from "./helpers";
 
 /**
  * ## DynamicTable
@@ -36,16 +37,21 @@ import { hasOption } from "./helpers";
  * table and allow the user to edit the data in a form.
  */
 export function DynamicTable(props: DynamicTableProps) {
-  const { data, editable, label, onEdit, onNew, options } = props;
-  // Whatever, I really don't know the new MUI command for this
+  const {
+    data,
+    editable,
+    grayscale,
+    label,
+    noIndex,
+    onEdit,
+    onNew,
+    onSelect,
+    options,
+  } = props;
+  const [selection, setSelection] = useState<Row<RowData>>();
   const classes = tableStyles();
-  const [sorting, setSorting] = useState<SortingState>([
-    {
-      id: "#",
-      desc: true,
-    },
-  ]);
-  const largeList = data.length > 100;
+
+  const largeList = data?.length > 100;
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   /** If the parent has an edit function, use it */
@@ -62,46 +68,52 @@ export function DynamicTable(props: DynamicTableProps) {
     }
   }
 
+  /** If there is a select function, use it */
+  function handleRowClick(row: Row<RowData>) {
+    if (!onSelect) return;
+    const target = row === selection ? undefined : row;
+    onSelect(target);
+    setSelection(target);
+  }
+
   /**
    * Creates a column definition for each key in the data.
    * Skips columns that have hidden or noTable options.
    */
   const columns = useMemo<ColumnDef<RowData>[]>(() => {
-    const initialColumns: ColumnDef<RowData>[] = [
-      {
-        accessorFn: (row: Row<RowData>) => row.index + 1,
-        cell: ({ row }) => row.index + 1,
-        id: "#",
-        size: 0,
-      } as DisplayColumnDef<RowData>,
-    ];
+    const initialColumns: ColumnDef<RowData>[] = !noIndex
+      ? [
+          {
+            accessorFn: (row: Row<RowData>) => row.index + 1,
+            cell: ({ row }) => row.index + 1,
+            id: "#",
+            size: 0,
+          } as DisplayColumnDef<RowData>,
+        ]
+      : [];
 
-    const toDisplay =
-      (options &&
-        Object.keys(options).filter(
-          (key) => !hasOption(key, options, ["noTable", "hidden"])
-        )) ||
-      Object.keys(data[0]);
-
-    toDisplay.map((key) =>
-      initialColumns.push({
-        accessorKey: key,
-        cell: ({ row: { original } }) => {
-          if (options && options[key]?.cell) {
-            const renderFn = options[key]?.cell;
-            if (renderFn) {
-              return renderFn(original[key]);
+    // If there is no data, we cannot infer the columns
+    Object.keys(options || data[0] || {})
+      .filter((key) => !hasOption(key, options, ["noTable", "hidden"]))
+      .map((key) =>
+        initialColumns.push({
+          accessorKey: key,
+          cell: ({ row: { original } }) => {
+            if (options && options[key]?.cell) {
+              const renderFn = options[key]?.cell;
+              if (renderFn) {
+                return renderFn(original[key]);
+              }
             }
-          }
-          return (original[key] && String(original[key])) || "";
-        },
-        header:
-          (options && options[key]?.label) ||
-          (key === "Title" && label && toTitleCase(label)) ||
-          toTitleCase(key),
-        size: 0,
-      } as AccessorColumnDef<RowData>)
-    );
+            return (original[key] && String(original[key])) || "";
+          },
+          header:
+            (options && options[key]?.label) ||
+            (key === "Title" && label && toTitleCase(label)) ||
+            toTitleCase(key),
+          size: (options && getColumnSize(options[key]?.size)) || 0,
+        } as AccessorColumnDef<RowData>)
+      );
 
     if (editable) {
       initialColumns.push({
@@ -125,6 +137,16 @@ export function DynamicTable(props: DynamicTableProps) {
 
     return initialColumns;
   }, [data]);
+
+  const [sorting, setSorting] = useState<SortingState>([
+    {
+      id:
+        ("id" in columns[0] && columns[0].id) ||
+        ("accessorKey" in columns[0] && columns[0].accessorKey) ||
+        "",
+      desc: true,
+    },
+  ]);
 
   const table = useReactTable({
     data,
@@ -179,10 +201,16 @@ export function DynamicTable(props: DynamicTableProps) {
               {headerGroup.headers.map((header) => {
                 return (
                   <TableCell
-                    className={classes.cellHeader}
+                    className={
+                      !grayscale
+                        ? classes.cellHeader
+                        : clsx(classes.cellHeader, classes.grayHeader)
+                    }
                     key={header.id}
                     colSpan={header.colSpan}
-                    style={{ width: header.getSize() }}
+                    style={{
+                      width: header.getSize(),
+                    }}
                   >
                     {header.isPlaceholder ? null : (
                       <div
@@ -223,23 +251,35 @@ export function DynamicTable(props: DynamicTableProps) {
               <TableRow
                 className={clsx(
                   classes.tableRow,
-                  row.index % 2 === 0 && classes.lightRow,
-                  row.index % 2 !== 0 && classes.darkRow
+                  row === selection && classes.selected,
+                  displayRow.index % 2 === 0 && classes.lightRow,
+                  displayRow.index % 2 !== 0 && classes.darkRow
                 )}
                 key={row.id}
               >
-                {row.getVisibleCells().map((cell) => {
+                {row.getVisibleCells().map((cell, index) => {
+                  const cellData = String(cell.getValue());
                   return (
-                    <TableCell
-                      className={classes.cell}
-                      key={cell.id}
-                      padding="none"
+                    <Tooltip
+                      key={index}
+                      placement="bottom"
+                      title={cellData.length > 40 ? cellData : ""}
                     >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+                      <TableCell
+                        className={classes.cell}
+                        onClick={() => handleRowClick(row)}
+                        padding="none"
+                        style={{
+                          width: cell.column.getSize() || 0,
+                          maxWidth: "20rem",
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    </Tooltip>
                   );
                 })}
               </TableRow>

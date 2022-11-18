@@ -9,8 +9,8 @@ import { DynamicWizard } from "./Wizard";
 /**
  * ## DynamicDialog
  * Parent component for the form and wizard dialogs. This component is used to
- * create a dialog that will be used to edit a row in the table. The dialog will
- * be pre-populated with the data from the row.
+ * create a dialog to edit a row in the table. The dialog will be pre-populated
+ * with the data from the rowm or use a template.
  */
 export function DynamicDialog(props: DynamicDialogProps) {
   const {
@@ -42,6 +42,7 @@ export function DynamicDialog(props: DynamicDialogProps) {
     setDialogMode(dialogMode === "edit" ? "wizard" : "edit");
   }
 
+  /** Wizard uses this to apply the template. */
   function onSetTemplate(selected: RowData) {
     setContent(selected);
     setDialogMode("edit");

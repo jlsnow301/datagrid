@@ -8,14 +8,20 @@ export const tableStyles = makeStyles(() => ({
     fontWeight: "bold",
     paddingTop: " 0.3rem",
     paddingBottom: "0.3rem",
+    textAlign: "right",
     textTransform: "uppercase",
+  },
+  grayHeader: {
+    backgroundColor: "#bbbbbb",
+    borderBottom: "thin solid black",
+    color: "black",
   },
   cell: {
     fontSize: "1rem",
     overflow: "hidden",
     padding: "0.5rem 0.5rem 0.5rem 1rem",
     textOverflow: "ellipsis",
-    maxWidth: "480px",
+    textAlign: "right",
     whiteSpace: "nowrap",
   },
   lightRow: {
@@ -37,6 +43,6 @@ export const tableStyles = makeStyles(() => ({
     marginBottom: "1rem",
     height: "100%",
     overflowY: "auto",
-    overflowX: "hidden",
+    overflowX: "auto",
   },
 }));
