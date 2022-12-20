@@ -29,14 +29,17 @@ export type DynamicWizardProps = Pick<TableConstructorProps, "templates"> &
   };
 
 type CommonOptions = Partial<{
-  cell: (value: CellData) => JSX.Element;
+  cell: (value: string) => JSX.Element;
+  disabled: boolean;
   label: string;
   hidden: boolean;
   multiline: boolean;
   noForm: boolean;
   noTable: boolean;
-  selections: string[] | number[];
+  onPickItem: (value: string) => void;
+  selections: string[] | ((value: string) => string[]);
   size: "sm" | "md" | "lg" | "xl";
+  value: ((value: string) => string) | string;
 }>;
 
 type TypeOptions =
@@ -44,21 +47,30 @@ type TypeOptions =
       number?: true;
       boolean?: false;
       optional?: false;
+      date?: false;
     }
   | {
       number?: false;
       boolean?: false;
       optional?: true;
+      date?: false;
     }
   | {
       number?: false;
       boolean?: true;
       optional?: false;
+      date?: false;
+    }
+  | {
+      number?: false;
+      boolean?: false;
+      optional?: boolean;
+      date?: true;
     };
 
 export type ConstructorOption = CommonOptions & TypeOptions;
 
-export type ConstructorOptions = Record<string, ConstructorOption>;
+export type ConstructorOptions = Map<string, ConstructorOption>;
 
 export type RowData = Record<string, CellData>;
 
@@ -75,6 +87,7 @@ type EditableProps =
   | {
       // Adds edit/insert, then creates dialogs for editing/inserting rows
       editable: true;
+      onClose?: () => void;
       onDelete?: (id: string) => void;
       onSave: (data: RowData) => void;
       // An array of objects that can be used to fill in the form
@@ -82,6 +95,7 @@ type EditableProps =
     }
   | {
       editable?: false;
+      onClose?: never;
       onDelete?: never;
       onSave?: never;
       templates?: never;

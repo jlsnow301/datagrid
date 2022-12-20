@@ -11,42 +11,59 @@ import {
 } from "@mui/material";
 import { useMemo } from "react";
 import { Control, useController, useForm } from "react-hook-form";
-import { ConstructorOptions, DynamicFormProps, RowData } from "./types";
-import { toTitleCase } from "../strings";
+
 import {
-  getInitialValue,
-  getSelections,
-  getZodSchema,
-  hasOption,
-} from "./helpers";
+  ConstructorOption,
+  ConstructorOptions,
+  DynamicFormProps,
+  RowData,
+} from "./types";
+import { isNullOrUndefined } from "./isNullOrUndefined";
+import { toTitleCase } from "./strings";
+import { getOption, getZodSchema, hasOption } from "./helpers";
 
 /**
  * ## DynamicForm
  * Generates a form based on the content and options provided. The form will
  * be pre-populated with the data from the row, or use a template.
  */
-export function DynamicForm(props: DynamicFormProps) {
-  const { content, editing, onClose, onDelete, onSubmit, options } = props;
+export function DynamicForm({
+  content,
+  editing,
+  onClose,
+  onDelete,
+  onSubmit,
+  options,
+}: DynamicFormProps) {
   const schema = useMemo(() => getZodSchema(content, options), [content]);
   const {
-    formState: { dirtyFields, isDirty },
     control,
+    formState: { dirtyFields, isDirty },
     handleSubmit,
   } = useForm({
     resolver: zodResolver(schema),
   });
 
-  const toDisplay =
+  const toDisplay: string[] =
     (options &&
-      Object.keys(options).filter(
-        (key) => !hasOption(key, options, ["hidden", "noForm"])
-      )) ||
+      [...options]
+        .filter(([_, value]) => !value.hidden && !value.noForm)
+        .map(([key]) => key)) ||
     Object.keys(content);
 
   const isSmallList = toDisplay.length < 12;
 
+  /** If a delete function exists and the ID is valid, call it */
+  function handleDeleteClick() {
+    const value = Object.values(content)[0];
+    if (onDelete && typeof value === "string") {
+      onDelete(value);
+      onClose();
+    }
+  }
+
   /** Copies the edited data over onto the original object */
-  function onSubmitClick(data: RowData) {
+  function handleSubmitClick(data: RowData) {
     if (Object.keys(dirtyFields).every((key) => data[key] === content[key])) {
       onClose();
       return;
@@ -62,21 +79,12 @@ export function DynamicForm(props: DynamicFormProps) {
     });
   }
 
-  /** If a delete function exists and the ID is valid, call it */
-  function onDeleteClick() {
-    const value = Object.values(content)[0];
-    if (onDelete && typeof value === "string") {
-      onDelete(value);
-      onClose();
-    }
-  }
-
   return (
-    <form onSubmit={handleSubmit(onSubmitClick)}>
+    <form onSubmit={handleSubmit(handleSubmitClick)}>
       <DialogContent
         sx={{
-          maxHeight: "35rem",
           border: "thin solid lightgray",
+          maxHeight: "35rem",
           overflowX: "hidden",
         }}
       >
@@ -84,11 +92,15 @@ export function DynamicForm(props: DynamicFormProps) {
           <DialogInput
             {...{
               control,
-              options,
               fullWidth: isSmallList,
-              label: (options && options[key]?.label) || toTitleCase(key),
+              initialValue: isNullOrUndefined(content[key])
+                ? ""
+                : (content[key] as string | number | boolean),
+              label:
+                (getOption(key, options, "label") as string) ||
+                toTitleCase(key),
               name: key,
-              initialValue: getInitialValue(content[key], index === 0),
+              options,
             }}
             key={index}
           />
@@ -116,7 +128,7 @@ export function DynamicForm(props: DynamicFormProps) {
             <Button
               color="primary"
               variant="contained"
-              onClick={onDeleteClick}
+              onClick={handleDeleteClick}
               sx={{ marginRight: "0.5rem" }}
             >
               Delete
@@ -145,16 +157,48 @@ function DialogInput(props: {
   name: string;
   initialValue: string | number | boolean;
 }) {
-  const { control, options, fullWidth, initialValue, label, name } = props;
+  const { control, fullWidth, initialValue, label, name, options } = props;
+
+  const fieldDisabled =
+    hasOption(name, options, ["disabled"]) &&
+    (getOption(name, options, "disabled") as boolean);
+
+  const isOptional = hasOption(name, options, ["optional"]);
 
   const multilineProps = hasOption(name, options, "multiline")
     ? {
-        rows: 3,
         multiline: true,
+        rows: 3,
       }
     : {};
 
-  const selections = getSelections(name, options);
+  let presetValue = "";
+  if (hasOption(name, options, "value")) {
+    const newValue = getOption(
+      name,
+      options,
+      "value"
+    ) as ConstructorOption["value"];
+    if (typeof newValue === "function") {
+      presetValue = newValue(String(initialValue));
+    } else if (typeof newValue === "string") {
+      presetValue = newValue;
+    }
+  }
+
+  let selections: string[] = [];
+  if (hasOption(name, options, "selections")) {
+    const newSelections = getOption(
+      name,
+      options,
+      "selections"
+    ) as ConstructorOption["selections"];
+    if (typeof newSelections === "function") {
+      selections = newSelections(String(initialValue));
+    } else if (newSelections instanceof Array) {
+      selections = newSelections;
+    }
+  }
 
   /** The initial value must be something viewable. Reverts to "". */
   const validDefault = useMemo(() => {
@@ -164,7 +208,8 @@ function DialogInput(props: {
       case initialValue === null:
         return;
       case selections.length > 0:
-        if (!selections.includes(initialValue as never)) {
+        if (presetValue) return presetValue;
+        if (!selections?.includes(initialValue as never)) {
           return "";
         }
         return initialValue;
@@ -177,15 +222,15 @@ function DialogInput(props: {
     field,
     formState: { errors },
   } = useController({
-    name,
     control,
     defaultValue: validDefault,
+    name,
   });
 
   /** Blocks any non-numbers from entering a number input */
   function changeHandler(event: React.ChangeEvent<HTMLInputElement>) {
     const { value } = event.target;
-    if (typeof initialValue === "number") {
+    if (hasOption(name, options, "number")) {
       if (!isNaN(Number(value))) {
         field.onChange(Number(value));
       }
@@ -194,22 +239,45 @@ function DialogInput(props: {
     field.onChange(value);
   }
 
-  if (typeof initialValue === "boolean") {
+  /** In case the user has made a state manager for picking form selections */
+  function selectHandler(event: React.ChangeEvent<HTMLInputElement>) {
+    if (!hasOption(name, options, "onPickItem")) {
+      field.onChange(event.target.value);
+      return;
+    }
+    const selectItem = getOption(
+      name,
+      options,
+      "onPickItem"
+    ) as ConstructorOption["onPickItem"];
+    if (selectItem) {
+      selectItem(event.target.value);
+    }
+    field.onChange(event.target.value);
+  }
+
+  if (
+    hasOption(name, options, "boolean") ||
+    typeof initialValue === "boolean"
+  ) {
     return (
       <FormControlLabel
-        control={<Checkbox {...field} defaultChecked={initialValue} />}
+        control={<Checkbox {...field} defaultChecked={Boolean(initialValue)} />}
         label={label}
       />
     );
-  } else if (selections instanceof Array && selections.length > 0) {
+  } else if (hasOption(name, options, "selections")) {
     return (
       <TextField
         {...field}
+        disabled={fieldDisabled}
         error={!!errors[name]}
         fullWidth={fullWidth}
         helperText={errors[name]?.message as string}
         id={name}
         label={label}
+        onChange={selectHandler}
+        required={!isOptional}
         select
         sx={{
           margin: "0.5rem 0.5rem 0.5rem 0",
@@ -226,17 +294,59 @@ function DialogInput(props: {
         ))}
       </TextField>
     );
+  } else if (
+    hasOption(name, options, "disabled") &&
+    hasOption(name, options, "value")
+  ) {
+    return (
+      <TextField
+        disabled
+        fullWidth={fullWidth}
+        id={name}
+        label={label}
+        required={!isOptional}
+        sx={{
+          margin: "0.5rem 0.5rem 0.5rem 0",
+          width: !fullWidth ? "25rem" : "100%",
+        }}
+        value={presetValue}
+      />
+    );
+  } else if (hasOption(name, options, "date")) {
+    return (
+      <TextField
+        {...field}
+        disabled={fieldDisabled}
+        error={!!errors[name]}
+        helperText={!!errors[name]?.message && "Please enter a valid date."}
+        id={name}
+        label={label}
+        onChange={changeHandler}
+        required={!isOptional}
+        sx={{
+          "& .MuiInputLabel-root": {
+            backgroundColor: "white",
+            transform: "translate(15px, -7px) scale(0.75)",
+          },
+          margin: "0.5rem 0.5rem 0.5rem 0",
+          width: !fullWidth ? "25rem" : "100%",
+        }}
+        type="date"
+      />
+    );
   } else {
     return (
       <TextField
         {...field}
         {...multilineProps}
+        disabled={fieldDisabled}
         error={!!errors[name]}
         fullWidth={fullWidth}
         helperText={errors[name]?.message as string}
         id={name}
         label={label}
         onChange={changeHandler}
+        required={!isOptional}
         sx={{
           margin: "0.5rem 0.5rem 0.5rem 0",
           width: !fullWidth ? "25rem" : "100%",

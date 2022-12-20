@@ -1,5 +1,4 @@
 import {
-  Button,
   Paper,
   Table,
   TableBody,
@@ -7,10 +6,9 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Tooltip,
 } from "@mui/material";
-import AddCircleIcon from "@mui/icons-material/AddCircle";
-import EditIcon from "@mui/icons-material/Edit";
+import EditButton from "@mui/icons-material/Edit";
+import NewButton from "@mui/icons-material/Add";
 import {
   AccessorColumnDef,
   ColumnDef,
@@ -25,10 +23,11 @@ import {
 import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtual, VirtualItem } from "react-virtual";
+
 import { tableStyles } from "./tableStyles";
-import { DynamicTableProps, RowData } from "./types";
-import { toTitleCase } from "../strings";
-import { getColumnSize, hasOption } from "./helpers";
+import type { ConstructorOption, DynamicTableProps, RowData } from "./types";
+import { toTitleCase } from "./strings";
+import { getColumnSize, getOption, hasOption } from "./helpers";
 
 /**
  * ## DynamicTable
@@ -36,18 +35,17 @@ import { getColumnSize, hasOption } from "./helpers";
  * be used with the TableConstructor component. It will display the data in a
  * table and allow the user to edit the data in a form.
  */
-export function DynamicTable(props: DynamicTableProps) {
-  const {
-    data,
-    editable,
-    grayscale,
-    label,
-    noIndex,
-    onEdit,
-    onNew,
-    onSelect,
-    options,
-  } = props;
+export function DynamicTable({
+  data,
+  editable,
+  grayscale,
+  label,
+  noIndex,
+  onEdit,
+  onNew,
+  onSelect,
+  options,
+}: DynamicTableProps) {
   const [selection, setSelection] = useState<Row<RowData>>();
   const classes = tableStyles();
 
@@ -92,45 +90,46 @@ export function DynamicTable(props: DynamicTableProps) {
         ]
       : [];
 
+    const columnKeys = !options
+      ? Object.keys(data[0])
+      : [...options]
+          .filter(([_, value]) => !value.hidden && !value.noTable)
+          .map(([key]) => key);
+
     // If there is no data, we cannot infer the columns
-    Object.keys(options || data[0] || {})
-      .filter((key) => !hasOption(key, options, ["noTable", "hidden"]))
-      .map((key) =>
-        initialColumns.push({
-          accessorKey: key,
-          cell: ({ row: { original } }) => {
-            if (options && options[key]?.cell) {
-              const renderFn = options[key]?.cell;
-              if (renderFn) {
-                return renderFn(original[key]);
-              }
+    columnKeys.map((key) =>
+      initialColumns.push({
+        accessorKey: key,
+        cell: ({ row: { original } }) => {
+          if (hasOption(key, options, "cell")) {
+            const renderFn = getOption(
+              key,
+              options,
+              "cell"
+            ) as ConstructorOption["cell"];
+            if (renderFn) {
+              return renderFn(String(original[key]));
             }
-            return (original[key] && String(original[key])) || "";
-          },
-          header:
-            (options && options[key]?.label) ||
-            (key === "Title" && label && toTitleCase(label)) ||
-            toTitleCase(key),
-          size: (options && getColumnSize(options[key]?.size)) || 0,
-        } as AccessorColumnDef<RowData>)
-      );
+          }
+          return (original[key] && String(original[key])) || "";
+        },
+        header:
+          (hasOption(key, options, "label") &&
+            getOption(key, options, "label")) ||
+          (key === "Title" && label && toTitleCase(label)) ||
+          toTitleCase(key),
+        size:
+          (hasOption(key, options, "size") &&
+            getColumnSize(getOption(key, options, "size") as string)) ||
+          0,
+      } as AccessorColumnDef<RowData>)
+    );
 
     if (editable) {
       initialColumns.push({
-        cell: ({ row: { original } }) => (
-          <Button
-            onClick={() => handleEditClick(original)}
-            sx={{ marginRight: "0.5rem" }}
-          >
-            <EditIcon />
-          </Button>
-        ),
+        cell: ({ row: { original } }) => <EditButton />,
+        header: () => <NewButton />,
         id: "actions",
-        header: () => (
-          <Button onClick={handleNewClick}>
-            <AddCircleIcon />
-          </Button>
-        ),
         size: 0,
       } as DisplayColumnDef<RowData>);
     }
@@ -140,33 +139,33 @@ export function DynamicTable(props: DynamicTableProps) {
 
   const [sorting, setSorting] = useState<SortingState>([
     {
+      desc: true,
       id:
         ("id" in columns[0] && columns[0].id) ||
         ("accessorKey" in columns[0] && columns[0].accessorKey) ||
         "",
-      desc: true,
     },
   ]);
 
   const table = useReactTable({
-    data,
     columns,
+    data,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
     state: {
       sorting,
     },
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
 
   const { rows } = table.getRowModel();
 
   const rowVirtualizer = useVirtual({
+    overscan: 10,
     parentRef: tableContainerRef,
     size: rows.length,
-    overscan: 10,
   });
-  const { virtualItems: virtualRows, totalSize } = rowVirtualizer;
+  const { totalSize, virtualItems: virtualRows } = rowVirtualizer;
 
   let paddingTop = 0;
   let paddingBottom = 0;
@@ -257,31 +256,19 @@ export function DynamicTable(props: DynamicTableProps) {
                 )}
                 key={row.id}
               >
-                {row.getVisibleCells().map((cell, index) => {
-                  const cellData = String(cell.getValue());
-                  return (
-                    <Tooltip
-                      key={index}
-                      placement="bottom"
-                      title={cellData.length > 40 ? cellData : ""}
-                    >
-                      <TableCell
-                        className={classes.cell}
-                        onClick={() => handleRowClick(row)}
-                        padding="none"
-                        style={{
-                          width: cell.column.getSize() || 0,
-                          maxWidth: "20rem",
-                        }}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    </Tooltip>
-                  );
-                })}
+                {row.getVisibleCells().map((cell, index) => (
+                  <TableCell
+                    className={classes.cell}
+                    onClick={() => handleRowClick(row)}
+                    padding="none"
+                    style={{
+                      maxWidth: "20rem",
+                      width: cell.column.getSize() || 0,
+                    }}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
               </TableRow>
             );
           })}

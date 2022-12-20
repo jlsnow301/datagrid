@@ -13,7 +13,8 @@ import {
   Typography,
 } from "@mui/material";
 import { ChangeEventHandler, useState } from "react";
-import { DynamicWizardProps, RowData } from "./types";
+
+import type { DynamicWizardProps, RowData } from "./types";
 import { getDisplayName } from "./helpers";
 
 /**
@@ -29,8 +30,11 @@ import { getDisplayName } from "./helpers";
  * Ideally this is used in conjunction with the DynamicDialog component, which will take the object
  * and populate the form values with it.
  */
-export function DynamicWizard(props: DynamicWizardProps) {
-  const { onClose, onSetTemplate, templates } = props;
+export function DynamicWizard({
+  onClose,
+  onSetTemplate,
+  templates,
+}: DynamicWizardProps) {
   const [selected, setSelected] = useState<RowData | undefined>();
 
   /** Selects a template from the dropdown. */
@@ -51,7 +55,10 @@ export function DynamicWizard(props: DynamicWizardProps) {
       return;
     }
     const newItem = { ...selected };
-    delete Object.keys(newItem)[0]; // Remove the ID portion.
+    delete newItem[Object.keys(selected)[0]];
+    if ("Master" in newItem) {
+      newItem.Master = false;
+    }
     onSetTemplate(newItem);
   };
 
